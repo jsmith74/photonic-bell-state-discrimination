@@ -72,6 +72,7 @@ inline void LinearOpticalTransform::setStateAmplitude(std::complex<double> state
 
     stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y][ancillaPhotons]) * U(ancillaModes+3,mPrime[y][ancillaPhotons+1])
                                     - U(ancillaModes + 1,mPrime[y][ancillaPhotons]) * U(ancillaModes + 2,mPrime[y][ancillaPhotons+1]) );
+
     return;
 
 }

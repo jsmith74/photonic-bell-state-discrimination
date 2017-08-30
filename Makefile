@@ -1,6 +1,6 @@
 CC = g++
-CFLAGS = -Ofast -c
-LFLAGS = -Ofast
+CFLAGS = -Ofast -funroll-loops -c
+LFLAGS = -Ofast -funroll-loops
 OBJS = main.o LinearOpticalTransform.o
 
 all: LinearOpticalSimulation
