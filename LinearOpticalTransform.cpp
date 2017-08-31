@@ -81,14 +81,12 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
     totalPyx[2] = 1 - totalPyx[2];
     totalPyx[3] = 1 - totalPyx[3];
 
-    if(totalPyx[0] > 0) mutualEntropy += totalPyx[0] * log2( ( totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3] ) / totalPyx[0] );
-    if(totalPyx[1] > 0) mutualEntropy += totalPyx[1] * log2( ( totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3] ) / totalPyx[1] );
-    if(totalPyx[2] > 0) mutualEntropy += totalPyx[2] * log2( ( totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3] ) / totalPyx[2] );
-    if(totalPyx[3] > 0) mutualEntropy += totalPyx[3] * log2( ( totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3] ) / totalPyx[3] );
+    double logNum = totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3];
 
-    mutualEntropy = 2.0 - 0.25 * mutualEntropy;
-
-    std::cout << "H(X:Y): " << std::setprecision(16) << mutualEntropy << std::endl << std::endl;
+    if(totalPyx[0] > 0 && logNum > 0) mutualEntropy += totalPyx[0] * log2( logNum / totalPyx[0] );
+    if(totalPyx[1] > 0 && logNum > 0) mutualEntropy += totalPyx[1] * log2( logNum / totalPyx[1] );
+    if(totalPyx[2] > 0 && logNum > 0) mutualEntropy += totalPyx[2] * log2( logNum / totalPyx[2] );
+    if(totalPyx[3] > 0 && logNum > 0) mutualEntropy += totalPyx[3] * log2( logNum / totalPyx[3] );
 
     return;
 

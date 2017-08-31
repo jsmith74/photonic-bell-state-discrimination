@@ -11,6 +11,7 @@ class LinearOpticalTransform{
 
     public:
 
+        double mutualEntropy;
         LinearOpticalTransform();
         void initializeCircuit(int& ancillaP,int& ancillaM);
         void setMutualEntropy(Eigen::MatrixXcd& U);
@@ -20,8 +21,6 @@ class LinearOpticalTransform{
         int ancillaPhotons, ancillaModes, HSDimension;
         std::vector<double> factorial;
         std::vector< std::vector<int> > nPrime, mPrime;
-
-        double mutualEntropy;
 
         int g(const int& n,const int& m);
         double doublefactorial(int x);
@@ -37,10 +36,10 @@ class LinearOpticalTransform{
 
 inline void LinearOpticalTransform::normalizeStateAmplitude(std::complex<double> stateAmplitude[],int& y){
 
-    stateAmplitude[0] *= 1.0 / sqrt(2.0);
-    stateAmplitude[1] *= 1.0 / sqrt(2.0);
-    stateAmplitude[2] *= 1.0 / sqrt(2.0);
-    stateAmplitude[3] *= 1.0 / sqrt(2.0);
+    stateAmplitude[0] *= 0.7071067811865475;
+    stateAmplitude[1] *= 0.7071067811865475;
+    stateAmplitude[2] *= 0.7071067811865475;
+    stateAmplitude[3] *= 0.7071067811865475;
 
     for(int p=0;p<nPrime[y].size();p++){
 
