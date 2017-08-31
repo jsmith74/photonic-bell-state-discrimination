@@ -1,35 +1,29 @@
 #include "BFGS_Optimization.h"
 
-#include <time.h>
 #include <fstream>
 #include <iostream>
+#include <omp.h>
+#include <unistd.h>
 
 int main(){
 
-    double gradientCheck = 1e-6;
+#pragma omp parallel for schedule(dynamic) default(none)
+    for(int i=0;i<1000;i++){
 
-    double maxStepSize = 2.0;
+        if(i<100) usleep(2000000 * omp_get_thread_num());
 
-    int intParam = 0;
+        double gradientCheck = 1e-4;
 
-    clock_t t1,t2;
+        double maxStepSize = 200.0;
 
-    BFGS_Optimization optimizer(gradientCheck,maxStepSize,intParam);
+        int intParam = 0;
 
-    t1 = clock();
-    for(int i=0;i<1000;i++) optimizer.minimize();
-    t2 = clock();
+        BFGS_Optimization optimizer(gradientCheck,maxStepSize,intParam);
 
-    float diff = (float)t2 - (float)t1;
+        optimizer.minimize();
 
-    std::cout << "Runtime: " << diff/CLOCKS_PER_SEC << std::endl << std::endl;
+    }
 
-    // TO DO: review SVD Non-unitary matrix generators and write it. Don't _always_ re-normalize the singular values
-    // just do it when when the matrix becomes super unitary. We want to allow the singular values to be <=1 and
-    // re-normalizing in this regime will force at least one singular value to always be 1.
-
-    // Think about the optimization, think about an appropriate starting regime for the optimization.
-    // Parallelize this, also think about implementing CUDA again with this code if timing becomes an issue.
 
     return 0;
 

@@ -2,21 +2,21 @@
 
 #define PI 3.141592653589793
 
-#define SUCCESS_MUT_ENT 1.49
+#define SUCCESS_MUT_ENT 1.6
 
-#define AMPLITUDE_SCALING 0.4
+#define AMPLITUDE_SCALING 0.3
 
 //#define CHECK_AMPLITUDE_SCALING
 
 void MeritFunction::setMeritFunction(int intParam){
 
-    int ancillaPhotons = 0;
-    int ancillaModes = 0;
+    int ancillaPhotons = 4;
+    int ancillaModes = 4;
 
     /** ======================================================================
 
             REMEMBER TO CHECK THE AMPLITUDE SCALING FOR AN APPROPRIATE STARTING RANGE FOR EACH
-            CONFIGURATION OF ANCILLA RESOURCES
+            CONFIGURATION OF ANCILLA RESOURCES - MAKE SURE TO TURN OFF PARALELLIZATION IN main.cpp
 
         ====================================================================== */
 

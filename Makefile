@@ -10,7 +10,7 @@ LinearOpticalSimulation: $(OBJS)
 	$(CC) $(LFLAGS) $(OMPFLAGS) $(OBJS) -o LinearOpticalSimulation
 
 main.o: main.cpp
-	$(CC) $(CFLAGS) main.cpp
+	$(CC) $(CFLAGS) $(OMPFLAGS) main.cpp
 
 LinearOpticalTransform.o: LinearOpticalTransform.cpp
 	$(CC) $(CFLAGS) LinearOpticalTransform.cpp
