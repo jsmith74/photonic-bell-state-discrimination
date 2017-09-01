@@ -25,7 +25,7 @@
 
 /** ===== Print Step Monitor ======================================= */
 
-#define PRINT_STEP_MONITOR
+//#define PRINT_STEP_MONITOR
 
 /** ================================================================ */
 
@@ -171,7 +171,7 @@ void BFGS_Optimization::setAlphaJ(double& alphaj,double& alphaLow,double& alphaH
 
         }
 
-        else assert(alphaj == 0.0);
+        //else assert(alphaj == 0.0);
 
         secondDerivativeTest = phiLow - phiHigh + (alphaHigh-alphaLow) * phiLowPrime;
 

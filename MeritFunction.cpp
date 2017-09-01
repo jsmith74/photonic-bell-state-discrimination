@@ -2,16 +2,16 @@
 
 #define PI 3.141592653589793
 
-#define SUCCESS_MUT_ENT 1.6
+#define SUCCESS_MUT_ENT 1.55
 
-#define AMPLITUDE_SCALING 0.3
+#define AMPLITUDE_SCALING 0.35
 
 //#define CHECK_AMPLITUDE_SCALING
 
 void MeritFunction::setMeritFunction(int intParam){
 
-    int ancillaPhotons = 4;
-    int ancillaModes = 4;
+    int ancillaPhotons = 2;
+    int ancillaModes = 2;
 
     /** ======================================================================
 
