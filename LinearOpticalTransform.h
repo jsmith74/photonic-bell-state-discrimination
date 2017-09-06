@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <iomanip>
 
+#include "CUDAFuncs.h"
+
 class LinearOpticalTransform{
 
     public:
@@ -29,9 +31,13 @@ class LinearOpticalTransform{
         void setmVec(std::vector<int>& m, std::vector<int>& n);
         inline void setStateAmplitude(std::complex<double> stateAmplitude[],Eigen::MatrixXcd& U,int& y);
         inline void normalizeStateAmplitude(std::complex<double> stateAmplitude[],int& y);
+        int evaluateNumberOfTerms();
 
         template<typename T>
         void printVec(std::vector<T>& vec);
+
+        CUDAOffloader OffloadtoGPU;
+
 };
 
 inline void LinearOpticalTransform::normalizeStateAmplitude(std::complex<double> stateAmplitude[],int& y){

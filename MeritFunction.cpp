@@ -10,8 +10,8 @@
 
 void MeritFunction::setMeritFunction(int intParam){
 
-    int ancillaPhotons = 2;
-    int ancillaModes = 2;
+    int ancillaPhotons = 6;
+    int ancillaModes = 8;
 
     /** ======================================================================
 
@@ -51,6 +51,10 @@ double MeritFunction::f(Eigen::VectorXd& position){
     if( svd.singularValues()(0) > 1 ) U /= svd.singularValues()(0);
 
     LOCircuit.setMutualEntropy(U);
+
+    std::cout << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+
+    assert( false );
 
     return LOCircuit.mutualEntropy;
 

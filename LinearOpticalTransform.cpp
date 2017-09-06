@@ -1,5 +1,7 @@
 #include "LinearOpticalTransform.h"
 
+
+
 LinearOpticalTransform::LinearOpticalTransform(){
 
 
@@ -25,68 +27,97 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     assert( ancillaModes >= ancillaPhotons );
 
+    OffloadtoGPU.queryGPUDevices();
+
+    OffloadtoGPU.setGPUDevice( 0 );
+
+    evaluateNumberOfTerms();
+
+    OffloadtoGPU.numberOfTerms = evaluateNumberOfTerms();
+
     return;
 
 }
 
+int LinearOpticalTransform::evaluateNumberOfTerms(){
+
+    int k = 0;
+
+    for(int y=0;y<HSDimension;y++) do{
+
+        assert( k < 2147483645);
+
+        k++;
+
+    } while( std::next_permutation( mPrime[y].begin(),mPrime[y].end() ) );
+
+    return k;
+
+}
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
-    double pyx[4];
+    OffloadtoGPU.sendUtoGPU( U );
 
-    mutualEntropy = 0.0;
+    mutualEntropy = OffloadtoGPU.setMutualEntropy();
 
-    double totalPyx[4];
-    totalPyx[0] = 0;
-    totalPyx[1] = 0;
-    totalPyx[2] = 0;
-    totalPyx[3] = 0;
 
-    for(int y=0;y<HSDimension;y++){
 
-        std::complex<double> stateAmplitude[4];
-
-        stateAmplitude[0] = 0.0;
-        stateAmplitude[1] = 0.0;
-        stateAmplitude[2] = 0.0;
-        stateAmplitude[3] = 0.0;
-
-        do{
-
-            setStateAmplitude(stateAmplitude,U,y);
-
-        } while( std::next_permutation( mPrime[y].begin(),mPrime[y].end() ) );
-
-        normalizeStateAmplitude(stateAmplitude,y);
-
-        pyx[0] = std::norm( stateAmplitude[0] );
-        pyx[1] = std::norm( stateAmplitude[1] );
-        pyx[2] = std::norm( stateAmplitude[2] );
-        pyx[3] = std::norm( stateAmplitude[3] );
-
-        if(pyx[0] != 0.0) mutualEntropy += pyx[0] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[0] );
-        if(pyx[1] != 0.0) mutualEntropy += pyx[1] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[1] );
-        if(pyx[2] != 0.0) mutualEntropy += pyx[2] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[2] );
-        if(pyx[3] != 0.0) mutualEntropy += pyx[3] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[3] );
-
-        totalPyx[0] += pyx[0];
-        totalPyx[1] += pyx[1];
-        totalPyx[2] += pyx[2];
-        totalPyx[3] += pyx[3];
-
-    }
-
-    totalPyx[0] = 1 - totalPyx[0];
-    totalPyx[1] = 1 - totalPyx[1];
-    totalPyx[2] = 1 - totalPyx[2];
-    totalPyx[3] = 1 - totalPyx[3];
-
-    double logNum = totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3];
-
-    if(totalPyx[0] > 0 && logNum > 0) mutualEntropy += totalPyx[0] * log2( logNum / totalPyx[0] );
-    if(totalPyx[1] > 0 && logNum > 0) mutualEntropy += totalPyx[1] * log2( logNum / totalPyx[1] );
-    if(totalPyx[2] > 0 && logNum > 0) mutualEntropy += totalPyx[2] * log2( logNum / totalPyx[2] );
-    if(totalPyx[3] > 0 && logNum > 0) mutualEntropy += totalPyx[3] * log2( logNum / totalPyx[3] );
+//    double pyx[4];
+//
+//    mutualEntropy = 0.0;
+//
+//    double totalPyx[4];
+//    totalPyx[0] = 0;
+//    totalPyx[1] = 0;
+//    totalPyx[2] = 0;
+//    totalPyx[3] = 0;
+//
+//    for(int y=0;y<HSDimension;y++){
+//
+//        std::complex<double> stateAmplitude[4];
+//
+//        stateAmplitude[0] = 0.0;
+//        stateAmplitude[1] = 0.0;
+//        stateAmplitude[2] = 0.0;
+//        stateAmplitude[3] = 0.0;
+//
+//        do{
+//
+//            setStateAmplitude(stateAmplitude,U,y);
+//
+//        } while( std::next_permutation( mPrime[y].begin(),mPrime[y].end() ) );
+//
+//        normalizeStateAmplitude(stateAmplitude,y);
+//
+//        pyx[0] = std::norm( stateAmplitude[0] );
+//        pyx[1] = std::norm( stateAmplitude[1] );
+//        pyx[2] = std::norm( stateAmplitude[2] );
+//        pyx[3] = std::norm( stateAmplitude[3] );
+//
+//        if(pyx[0] != 0.0) mutualEntropy += pyx[0] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[0] );
+//        if(pyx[1] != 0.0) mutualEntropy += pyx[1] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[1] );
+//        if(pyx[2] != 0.0) mutualEntropy += pyx[2] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[2] );
+//        if(pyx[3] != 0.0) mutualEntropy += pyx[3] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[3] );
+//
+//        totalPyx[0] += pyx[0];
+//        totalPyx[1] += pyx[1];
+//        totalPyx[2] += pyx[2];
+//        totalPyx[3] += pyx[3];
+//
+//    }
+//
+//    totalPyx[0] = 1 - totalPyx[0];
+//    totalPyx[1] = 1 - totalPyx[1];
+//    totalPyx[2] = 1 - totalPyx[2];
+//    totalPyx[3] = 1 - totalPyx[3];
+//
+//    double logNum = totalPyx[0] + totalPyx[1] + totalPyx[2] + totalPyx[3];
+//
+//    if(totalPyx[0] > 0 && logNum > 0) mutualEntropy += totalPyx[0] * log2( logNum / totalPyx[0] );
+//    if(totalPyx[1] > 0 && logNum > 0) mutualEntropy += totalPyx[1] * log2( logNum / totalPyx[1] );
+//    if(totalPyx[2] > 0 && logNum > 0) mutualEntropy += totalPyx[2] * log2( logNum / totalPyx[2] );
+//    if(totalPyx[3] > 0 && logNum > 0) mutualEntropy += totalPyx[3] * log2( logNum / totalPyx[3] );
 
     return;
 
