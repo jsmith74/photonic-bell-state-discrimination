@@ -1,12 +1,13 @@
 CC = g++
 CUCC = nvcc
 CFLAGS = -Ofast -funroll-loops -c
+CUFLAGS = #-Xcompiler " -fopenmp"
 OBJS = main.o LinearOpticalTransform.o MeritFunction.o BFGS_Optimization.o CUDAFuncs.o
 
 all: LinearOpticalSimulation
 
 LinearOpticalSimulation: $(OBJS)
-	$(CUCC) $(OBJS) -o LinearOpticalSimulation
+	$(CUCC) $(CUFLAGS) $(OBJS) -o LinearOpticalSimulation
 
 main.o: main.cpp
 	$(CC) $(CFLAGS) $(OMPFLAGS) main.cpp
@@ -21,7 +22,7 @@ BFGS_Optimization.o: BFGS_Optimization.cpp
 	$(CC) $(CFLAGS) BFGS_Optimization.cpp
 
 CUDAFuncs.o: CUDAFuncs.cu
-	$(CUCC) -c CUDAFuncs.cu
+	$(CUCC) $(CUFLAGS) -c CUDAFuncs.cu
 
 clean:
 	rm *.o LinearOpticalSimulation *.dat

@@ -31,9 +31,14 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     OffloadtoGPU.setGPUDevice( 0 );
 
-    evaluateNumberOfTerms();
-
     OffloadtoGPU.numberOfTerms = evaluateNumberOfTerms();
+
+    OffloadtoGPU.allocateResources();
+
+    OffloadtoGPU.sendFactorialToGPU( factorial );
+
+    nPrime.resize(0);
+    mPrime.resize(0);
 
     return;
 
@@ -45,11 +50,11 @@ int LinearOpticalTransform::evaluateNumberOfTerms(){
 
     for(int y=0;y<HSDimension;y++) do{
 
-        assert( k < 2147483645);
+        assert( k < 2147483645 );
 
         k++;
 
-    } while( std::next_permutation( mPrime[y].begin(),mPrime[y].end() ) );
+    } while( std::next_permutation( mPrime[y].begin() , mPrime[y].end() ) );
 
     return k;
 
@@ -57,11 +62,9 @@ int LinearOpticalTransform::evaluateNumberOfTerms(){
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
-    OffloadtoGPU.sendUtoGPU( U );
+    OffloadtoGPU.sendUToGPU( U );
 
-    mutualEntropy = OffloadtoGPU.setMutualEntropy();
-
-
+    mutualEntropy = OffloadtoGPU.setMutualEntropy( nPrime, mPrime );
 
 //    double pyx[4];
 //
