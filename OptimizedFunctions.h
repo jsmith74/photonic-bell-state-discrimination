@@ -15,7 +15,6 @@ class OptimizedFunctions{
     private:
 
 
-
 };
 
 #endif // OPTIMIZEDFUNCTIONS_H_INCLUDED

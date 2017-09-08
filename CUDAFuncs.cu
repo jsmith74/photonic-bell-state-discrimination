@@ -3,7 +3,7 @@
 #define ANCILLA_PHOTONS 6
 #define ANCILLA_MODES 8
 
-#define BUFFER_SIZE 1100000000
+#define BUFFER_SIZE 800000000
 
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
@@ -121,6 +121,7 @@ void CUDAOffloader::sendUToGPU(Eigen::MatrixXcd& U){
 
 void CUDAOffloader::setUTermsandPrepareNextIteration(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
 
+#pragma omp parallel for
     for(int CPU=0;CPU<2;CPU++){
 
         if( CPU == 0 ){
@@ -131,7 +132,7 @@ void CUDAOffloader::setUTermsandPrepareNextIteration(std::vector< std::vector<in
 
         if( CPU == 1 ){
 
-             //gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
+             gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
 
         }
 
@@ -153,10 +154,10 @@ double CUDAOffloader::setMutualEntropy(std::vector< std::vector<int> >& nPrime,s
     cudaMalloc( (void**)&dev_nPrime, totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ) );
     cudaMalloc( (void**)&dev_mPrime, totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ) );
 
-    for(int i=0;i<iterations-2;i++){
+    for(int i=0;i<iterations;i++){
 
-        //cudaMemcpy( dev_nPrime,nPrimeSub,totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ),cudaMemcpyHostToDevice );
-        //cudaMemcpy( dev_mPrime,mPrimeSub,totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ),cudaMemcpyHostToDevice );
+        cudaMemcpy( dev_nPrime,nPrimeSub,totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ),cudaMemcpyHostToDevice );
+        cudaMemcpy( dev_mPrime,mPrimeSub,totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ),cudaMemcpyHostToDevice );
 
         setUTermsandPrepareNextIteration(nPrime,mPrime);
 

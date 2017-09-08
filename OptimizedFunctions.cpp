@@ -38,11 +38,14 @@ void OptimizedFunctions::setSubNPrimeMPrime(std::vector< std::vector<int> >& nPr
 
             subWall++;
 
-        } while( std::next_permutation( mPrime[ subIndex ].begin(), mPrime[ subIndex ].end()  ) );
+        } while( std::next_permutation( mPrime[ subIndex ].begin(), mPrime[ subIndex ].end() ) );
 
         subIndex++;
 
+        if( subIndex > nPrime.size() ) break;
+
     }
+
 
     return;
 
@@ -50,6 +53,7 @@ void OptimizedFunctions::setSubNPrimeMPrime(std::vector< std::vector<int> >& nPr
 
 
 OptimizedFunctions::OptimizedFunctions(){
+
 
 
 }
