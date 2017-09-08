@@ -37,9 +37,6 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     OffloadtoGPU.sendFactorialToGPU( factorial );
 
-    nPrime.resize(0);
-    mPrime.resize(0);
-
     return;
 
 }

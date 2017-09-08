@@ -2,7 +2,6 @@
 
 #define ANCILLA_PHOTONS 6
 #define ANCILLA_MODES 8
-#define NUMBER_OF_TERMS_PER_ITERATION 21792768
 
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
@@ -87,8 +86,8 @@ void CUDAOffloader::allocateResources(){
 
     numbGPUs = count;
 
-    nPrimeSub = new int[ NUMBER_OF_TERMS_PER_ITERATION * ( 4 + ANCILLA_MODES ) ];
-    mPrimeSub = new int[ NUMBER_OF_TERMS_PER_ITERATION * ( 2 + ANCILLA_PHOTONS ) ];
+    nPrimeSub = new int[ totalTermsPerIteration * ( 4 + ANCILLA_MODES ) ];
+    mPrimeSub = new int[ totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) ];
 
     return;
 
@@ -118,36 +117,41 @@ void CUDAOffloader::sendUToGPU(Eigen::MatrixXcd& U){
 
 void CUDAOffloader::setSubNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
 
-    /** UP TO HERE GET THIS TO FILL nPrimeSub,mPrimeSub for each block uploaded GPU (20 blocks) make sure to delete [] these temp storage blocks when you're done with them*/
-
-    int km = 0;
     int kn = 0;
+    int km = 0;
 
     int subWall = 0;
 
     while( subWall < totalTermsPerIteration ){
 
-//        do{
-//
-//            for(int i=0;i<nPrime[ subIndex ].size();i++){
-//
-//                nPrimeSub[ kn ] = nPrime[ subIndex ][i];
-//                kn++;
-//
-//            }
-//
-//            for(int i=0;i<mPrime[ subIndex ].size();i++){
-//
-//                mPrimeSub[ km ] = mPrime[ subIndex ][i];
-//                km++;
-//
-//            }
-//
-//            subWall++;
-//
-//            if( subWall == totalTermsPerIteration ) break;
-//
-//        } while( std::next_permutation( mPrime[ subIndex ].begin(), mPrime[ subIndex ].end() ) );
+        do{
+
+            if( subWall >= totalTermsPerIteration ){
+
+                subIndex--;
+                break;
+
+            }
+
+            for(int i=0;i<nPrime[ subIndex ].size();i++){
+
+                nPrimeSub[ kn ] = nPrime[ subIndex ][i];
+
+                kn++;
+
+            }
+
+            for(int i=0;i<mPrime[ subIndex ].size();i++){
+
+                mPrimeSub[ km ] = mPrime[ subIndex ][i];
+
+                km++;
+
+            }
+
+            subWall++;
+
+        } while( std::next_permutation( mPrime[ subIndex ].begin(), mPrime[ subIndex ].end()  ) );
 
         subIndex++;
 
@@ -156,6 +160,7 @@ void CUDAOffloader::setSubNPrimeMPrime(std::vector< std::vector<int> >& nPrime,s
     return;
 
 }
+
 
 double CUDAOffloader::setMutualEntropy(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
 
