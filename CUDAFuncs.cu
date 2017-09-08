@@ -3,9 +3,13 @@
 #define ANCILLA_PHOTONS 6
 #define ANCILLA_MODES 8
 
+#define BUFFER_SIZE 1100000000
+
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
-
+thrust::complex<double>* dev_UTerms;
+int* dev_nPrime;
+int* dev_mPrime;
 
 __global__ void setEachUTerm(){
 
@@ -30,7 +34,7 @@ void CUDAOffloader::allocateResources(){
 
     for(int i=0;i<count;i++) spaceAvail[i] = prop[i].totalGlobalMem;
 
-    for(int i=0;i<count;i++) spaceAvail[i] -= ( UStorageSize + factorialStorageSize );
+    for(int i=0;i<count;i++) spaceAvail[i] -= ( UStorageSize + factorialStorageSize + BUFFER_SIZE );
 
     int maxTerms[ count ];
 
@@ -115,45 +119,21 @@ void CUDAOffloader::sendUToGPU(Eigen::MatrixXcd& U){
 
 }
 
-void CUDAOffloader::setSubNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
+void CUDAOffloader::setUTermsandPrepareNextIteration(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
 
-    int kn = 0;
-    int km = 0;
+    for(int CPU=0;CPU<2;CPU++){
 
-    int subWall = 0;
+        if( CPU == 0 ){
 
-    while( subWall < totalTermsPerIteration ){
 
-        do{
 
-            if( subWall >= totalTermsPerIteration ){
+        }
 
-                subIndex--;
-                break;
+        if( CPU == 1 ){
 
-            }
+             //gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
 
-            for(int i=0;i<nPrime[ subIndex ].size();i++){
-
-                nPrimeSub[ kn ] = nPrime[ subIndex ][i];
-
-                kn++;
-
-            }
-
-            for(int i=0;i<mPrime[ subIndex ].size();i++){
-
-                mPrimeSub[ km ] = mPrime[ subIndex ][i];
-
-                km++;
-
-            }
-
-            subWall++;
-
-        } while( std::next_permutation( mPrime[ subIndex ].begin(), mPrime[ subIndex ].end()  ) );
-
-        subIndex++;
+        }
 
     }
 
@@ -166,9 +146,25 @@ double CUDAOffloader::setMutualEntropy(std::vector< std::vector<int> >& nPrime,s
 
     subIndex = 0;
 
-    setSubNPrimeMPrime(nPrime,mPrime);
+    gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
 
-    setEachUTerm<<<10,10>>>();
+    cudaMalloc( (void**)&dev_UTerms, totalTermsPerIteration * sizeof( thrust::complex<double> ) );
+
+    cudaMalloc( (void**)&dev_nPrime, totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ) );
+    cudaMalloc( (void**)&dev_mPrime, totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ) );
+
+    for(int i=0;i<iterations-2;i++){
+
+        //cudaMemcpy( dev_nPrime,nPrimeSub,totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ),cudaMemcpyHostToDevice );
+        //cudaMemcpy( dev_mPrime,mPrimeSub,totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ),cudaMemcpyHostToDevice );
+
+        setUTermsandPrepareNextIteration(nPrime,mPrime);
+
+    }
+
+    cudaFree( dev_nPrime );
+    cudaFree( dev_mPrime );
+    cudaFree( dev_UTerms );
 
     std::cout << "CUDA Errors: " << cudaGetErrorString( cudaGetLastError() ) << std::endl;
 

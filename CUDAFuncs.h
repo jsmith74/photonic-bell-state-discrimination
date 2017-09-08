@@ -4,8 +4,9 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include <thrust/complex.h>
-//#include <omp.h>
+#include <omp.h>
 #include <vector>
+#include "OptimizedFunctions.h"
 
 class CUDAOffloader{
 
@@ -30,7 +31,10 @@ class CUDAOffloader{
         int* nPrimeSub;
         int* mPrimeSub;
 
-        void setSubNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
+        OptimizedFunctions gccFunction;
+
+        void setUTermsandPrepareNextIteration(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
+
 
 };
 
