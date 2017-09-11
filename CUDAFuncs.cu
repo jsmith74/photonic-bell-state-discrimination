@@ -2,20 +2,22 @@
 
 #define ANCILLA_PHOTONS 6
 #define ANCILLA_MODES 8
+#define HILBERT_SPACE_DIMENSION 75582
 
-#define BUFFER_SIZE 800000000
+#define TERMS_BUFFER 0
 
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
 thrust::complex<double>* dev_UTerms;
-int* dev_nPrime;
-int* dev_mPrime;
 
-__global__ void setEachUTerm(){
 
+void CUDAOffloader::initializeStartingNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
+
+
+
+    return;
 
 }
-
 
 void CUDAOffloader::allocateResources(){
 
@@ -23,75 +25,65 @@ void CUDAOffloader::allocateResources(){
 
     cudaGetDeviceCount( &count );
 
-    cudaDeviceProp prop[count];
+    assert( count > 0 );
 
-    for(int i=0;i<count;i++) cudaGetDeviceProperties( &prop[i],i );
+    cudaDeviceProp prop;
+
+    cudaGetDeviceProperties( &prop,0 );
+
+    int spaceAvail = prop.totalGlobalMem;
 
     int UStorageSize = ( ANCILLA_MODES + 4 ) * ( ANCILLA_MODES + 4 ) * 16;
     int factorialStorageSize = ( ANCILLA_PHOTONS + 3 ) * 8;
+    int UTermStorageSize = 16 * HILBERT_SPACE_DIMENSION;
 
-    int spaceAvail[ count ];
+    spaceAvail -= UStorageSize;
+    spaceAvail -= factorialStorageSize;
+    spaceAvail -= UTermStorageSize;
 
-    for(int i=0;i<count;i++) spaceAvail[i] = prop[i].totalGlobalMem;
+    std::cout << "Space available on GPU: " << spaceAvail << " bytes" <<std::endl << std::endl;
 
-    for(int i=0;i<count;i++) spaceAvail[i] -= ( UStorageSize + factorialStorageSize + BUFFER_SIZE );
+    numberOfThreads = 0;
+    int spaceTaken = 0;
 
-    int maxTerms[ count ];
+    while( spaceTaken < spaceAvail ){
 
-    for(int i=0;i<count;i++){
+        numberOfThreads++;
 
-        maxTerms[i] = 0;
+        spaceTaken = 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES );
 
-        int spaceTaken = 0;
-
-        while( spaceTaken < spaceAvail[i] ){
-
-            spaceTaken = maxTerms[i] * 4 * ( 4 + ANCILLA_MODES );
-            spaceTaken += maxTerms[i] * 4 * ( 2 + ANCILLA_PHOTONS );
-            spaceTaken += maxTerms[i] * 16;
-
-            maxTerms[i]++;
-
-        }
-
-        maxTerms[i]--;
+        spaceTaken += 16 * numberOfThreads;
 
     }
 
-    maxTerms[1] = 0;
+    numberOfThreads--;
 
-    std::cout << "Terms that can be done on GTX at once: " << maxTerms[0] << std::endl;
-    std::cout << "Terms that can be done on NVS at once: " << maxTerms[1] << std::endl;
-    std::cout << "Total terms: " << numberOfTerms << std::endl;
+    threadsPerBlock = 1024;
 
-    blocksPerGrid.resize(count);
-    threadsPerBlock.resize(count);
-    termsPerIteration.resize(count);
+    std::cout << "Number of total terms: " << numberOfTerms << std::endl;
+    std::cout << "Max Number of threads: " << numberOfThreads << std::endl;
+    std::cout << "Space used on GPU for this number: " << 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES + 4 ) << " bytes" << std::endl;
 
-    for(int i=0;i<count;i++) threadsPerBlock.at(i) = prop[i].maxThreadsPerBlock;
+    termIntervals = ( numberOfTerms + numberOfThreads - 1 ) / numberOfThreads;
+    termIntervals += TERMS_BUFFER;
 
-    for(int i=0;i<count;i++) blocksPerGrid.at(i) = maxTerms[i] / threadsPerBlock[i];
+    std::cout << "The Minimum Number of Terms that need to be evaluated in at least one interval: " << termIntervals << std::endl;
 
-    for(int i=0;i<count;i++) termsPerIteration.at(i) = blocksPerGrid.at(i) * threadsPerBlock.at(i);
+    numberOfThreads = ( numberOfTerms + termIntervals - 1 ) / termIntervals;
 
-    for(int i=0;i<count;i++) assert( termsPerIteration.at(i) <= maxTerms[i] );
+    std::cout << "Adjusted number of threads: " << numberOfThreads << std::endl;
+    std::cout << "Number of total terms covered if each thread does " << termIntervals << " terms: "  << numberOfThreads * termIntervals << std::endl;
 
-    totalTermsPerIteration = 0;
-    for(int i=0;i<count;i++) totalTermsPerIteration += termsPerIteration.at(i);
+    while( numberOfThreads % threadsPerBlock != 0 ) threadsPerBlock--;
 
-    iterations = ( numberOfTerms + totalTermsPerIteration - 1 ) / totalTermsPerIteration;
+    blocksPerGrid = numberOfThreads / threadsPerBlock;
 
-    for(int i=0;i<count;i++) std::cout << "Blocks Per Grid: " << blocksPerGrid.at(i) << std::endl;
-    for(int i=0;i<count;i++) std::cout << "Threads Per Block: " << threadsPerBlock.at(i) << std::endl;
-    for(int i=0;i<count;i++) std::cout << "Terms Per Iteration: " << termsPerIteration.at(i) << std::endl;
+    std::cout << "Adjusted threads per block: " << threadsPerBlock << std::endl;
+    std::cout << "Adjusted blocks per grid: " << blocksPerGrid << std::endl;
 
-    std::cout << "Total Terms Per Iteration: " << totalTermsPerIteration << std::endl;
-    std::cout << "Iterations: " << iterations << std::endl;
+    std::cout << "Adjusted Space used on GPU: " << 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES + 4 ) << " bytes" << std::endl;
 
-    numbGPUs = count;
-
-    nPrimeSub = new int[ totalTermsPerIteration * ( 4 + ANCILLA_MODES ) ];
-    mPrimeSub = new int[ totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) ];
+    assert( threadsPerBlock * blocksPerGrid == numberOfThreads );
 
     return;
 
@@ -118,61 +110,6 @@ void CUDAOffloader::sendUToGPU(Eigen::MatrixXcd& U){
     return;
 
 }
-
-void CUDAOffloader::setUTermsandPrepareNextIteration(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
-
-#pragma omp parallel for
-    for(int CPU=0;CPU<2;CPU++){
-
-        if( CPU == 0 ){
-
-
-
-        }
-
-        if( CPU == 1 ){
-
-             gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
-
-        }
-
-    }
-
-    return;
-
-}
-
-
-double CUDAOffloader::setMutualEntropy(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
-
-    subIndex = 0;
-
-    gccFunction.setSubNPrimeMPrime(nPrime,mPrime,nPrimeSub,mPrimeSub,subIndex,totalTermsPerIteration);
-
-    cudaMalloc( (void**)&dev_UTerms, totalTermsPerIteration * sizeof( thrust::complex<double> ) );
-
-    cudaMalloc( (void**)&dev_nPrime, totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ) );
-    cudaMalloc( (void**)&dev_mPrime, totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ) );
-
-    for(int i=0;i<iterations;i++){
-
-        cudaMemcpy( dev_nPrime,nPrimeSub,totalTermsPerIteration * ( 4 + ANCILLA_MODES ) * sizeof( int ),cudaMemcpyHostToDevice );
-        cudaMemcpy( dev_mPrime,mPrimeSub,totalTermsPerIteration * ( 2 + ANCILLA_PHOTONS ) * sizeof( int ),cudaMemcpyHostToDevice );
-
-        setUTermsandPrepareNextIteration(nPrime,mPrime);
-
-    }
-
-    cudaFree( dev_nPrime );
-    cudaFree( dev_mPrime );
-    cudaFree( dev_UTerms );
-
-    std::cout << "CUDA Errors: " << cudaGetErrorString( cudaGetLastError() ) << std::endl;
-
-    return 1.0;
-
-}
-
 
 CUDAOffloader::CUDAOffloader(){
 

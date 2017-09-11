@@ -37,6 +37,11 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     OffloadtoGPU.sendFactorialToGPU( factorial );
 
+    OffloadtoGPU.initializeStartingNPrimeMPrime(nPrime,mPrime);
+
+    nPrime.resize( 0 );
+    mPrime.resize( 0 );
+
     return;
 
 }
@@ -60,8 +65,6 @@ int LinearOpticalTransform::evaluateNumberOfTerms(){
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     OffloadtoGPU.sendUToGPU( U );
-
-    mutualEntropy = OffloadtoGPU.setMutualEntropy( nPrime, mPrime );
 
 //    double pyx[4];
 //

@@ -6,7 +6,6 @@
 #include <thrust/complex.h>
 #include <omp.h>
 #include <vector>
-#include "OptimizedFunctions.h"
 
 class CUDAOffloader{
 
@@ -14,27 +13,17 @@ class CUDAOffloader{
 
         CUDAOffloader();
         void sendUToGPU(Eigen::MatrixXcd& U);
-        double setMutualEntropy(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
         void queryGPUDevices();
         void setGPUDevice(int deviceNumb);
         void allocateResources();
         void sendFactorialToGPU(std::vector<double>& factorial);
+        void initializeStartingNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
+
         int numberOfTerms;
 
     private:
 
-        std::vector<int> threadsPerBlock;
-        std::vector<int> blocksPerGrid;
-        std::vector<int> termsPerIteration;
-        int totalTermsPerIteration, iterations, numbGPUs, subIndex;
-
-        int* nPrimeSub;
-        int* mPrimeSub;
-
-        OptimizedFunctions gccFunction;
-
-        void setUTermsandPrepareNextIteration(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
-
+        int blocksPerGrid, threadsPerBlock, numberOfThreads, termIntervals;
 
 };
 
