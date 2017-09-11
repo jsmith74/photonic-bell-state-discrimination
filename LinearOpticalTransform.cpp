@@ -66,6 +66,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     OffloadtoGPU.sendUToGPU( U );
 
+    mutualEntropy = OffloadtoGPU.setMutualEntropy();
+
 //    double pyx[4];
 //
 //    mutualEntropy = 0.0;

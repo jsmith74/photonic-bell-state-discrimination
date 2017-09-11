@@ -4,16 +4,80 @@
 #define ANCILLA_MODES 8
 #define HILBERT_SPACE_DIMENSION 75582
 
-#define TERMS_BUFFER 0
+#define TERMS_BUFFER 5
+
+// REMEMBER TO DELETE DYNAMIC MEMORY DECLARED BY nPrimeStarter and mPrimeStarter AT THE END OF THE OPTIMIZATION ROUTINE
 
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
-thrust::complex<double>* dev_UTerms;
+__constant__ int dev_termIntervals;
 
+__device__ bool next_permutation(int* __first, int* __last);
+
+//thrust::complex<double>* dev_UTerms;
+
+__global__ void kernel(int* dev_nPrime,int* dev_mPrime){
+
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    int term = 0;
+
+    while(term < dev_termIntervals){
+
+        do{
+
+            // write code to keep track of which terms of dev_UTerms belong where, factor
+            // this into the space allocation function
+
+            // dev_nPrime[ i + tid * (4 + ANCILLA_MODES) ];
+            // dev_mPrime[ i + tid * (2 + ANCILLA_PHOTONS) ];
+
+            term++;
+
+            if(term >= dev_termIntervals) break;
+
+        } while( next_permutation( &dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) ] , &dev_mPrime[ (tid + 1) * (ANCILLA_PHOTONS + 2) ] ) );
+
+        // iterate dev_nPrime and generate new corresponding dev_mPrime in initialized position
+
+    }
+
+}
+
+double CUDAOffloader::setMutualEntropy(){
+
+    std::cout << "Begin..." << std::endl;
+
+    int* dev_nPrime;    int* dev_mPrime;
+
+    cudaMalloc( (void**)&dev_nPrime, numberOfThreads * ( 4 + ANCILLA_MODES ) * sizeof(int) );
+
+    cudaMalloc( (void**)&dev_mPrime, numberOfThreads * ( 2 + ANCILLA_PHOTONS ) * sizeof(int) );
+
+    cudaMemcpy( dev_nPrime, nPrimeStarter, numberOfThreads * ( 4 + ANCILLA_MODES ) * sizeof(int), cudaMemcpyHostToDevice );
+
+    cudaMemcpy( dev_mPrime, mPrimeStarter, numberOfThreads * ( 2 + ANCILLA_PHOTONS ) * sizeof(int), cudaMemcpyHostToDevice );
+
+    kernel<<<blocksPerGrid,threadsPerBlock>>>(dev_nPrime,dev_mPrime);
+
+    cudaFree( dev_nPrime );
+
+    cudaFree( dev_mPrime );
+
+    std::cout << "End." << std::endl;
+
+    std::cout << "CUDA Errors: " << cudaGetErrorString( cudaGetLastError() ) << std::endl;
+
+    return 1.0;
+
+}
 
 void CUDAOffloader::initializeStartingNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
 
+    nPrimeStarter = new int[ numberOfThreads * (4 + ANCILLA_MODES) ];
+    mPrimeStarter = new int[ numberOfThreads * (2 + ANCILLA_PHOTONS) ];
 
+    gccCompiledFunctions.initializeStartingNPrimeMPrime(nPrime,mPrime,nPrimeStarter,mPrimeStarter,numberOfThreads,termIntervals);
 
     return;
 
@@ -84,6 +148,8 @@ void CUDAOffloader::allocateResources(){
     std::cout << "Adjusted Space used on GPU: " << 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES + 4 ) << " bytes" << std::endl;
 
     assert( threadsPerBlock * blocksPerGrid == numberOfThreads );
+
+    cudaMemcpyToSymbol( dev_termIntervals,&termIntervals, sizeof(int) );
 
     return;
 
@@ -183,5 +249,54 @@ void CUDAOffloader::queryGPUDevices(){
     }
 
     return;
+
+}
+
+
+__device__ inline void iter_swap(int* __a, int* __b) {
+  int __tmp = *__a;
+  *__a = *__b;
+  *__b = __tmp;
+}
+
+
+__device__ void reverse(int* __first, int* __last) {
+
+  while (true)
+    if (__first == __last || __first == --__last)
+      return;
+    else{
+      iter_swap(__first++, __last);
+    }
+}
+
+
+__device__ bool next_permutation(int* __first, int* __last) {
+
+  if (__first == __last)
+    return false;
+  int* __i = __first;
+  ++__i;
+  if (__i == __last)
+    return false;
+  __i = __last;
+  --__i;
+
+  for(;;) {
+    int* __ii = __i;
+    --__i;
+    if (*__i < *__ii) {
+      int* __j = __last;
+      while (!(*__i < *--__j))
+        {}
+    iter_swap(__i, __j);
+      reverse(__ii, __last);
+      return true;
+    }
+    if (__i == __first) {
+      reverse(__first, __last);
+      return false;
+    }
+  }
 
 }
