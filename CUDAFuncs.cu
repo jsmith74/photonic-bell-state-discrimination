@@ -4,7 +4,7 @@
 #define ANCILLA_MODES 8
 #define HILBERT_SPACE_DIMENSION 75582
 
-#define TERMS_BUFFER 5
+#define TERMS_BUFFER 1
 
 // REMEMBER TO DELETE DYNAMIC MEMORY DECLARED BY nPrimeStarter and mPrimeStarter AT THE END OF THE OPTIMIZATION ROUTINE
 
@@ -13,24 +13,65 @@ __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
 __constant__ int dev_termIntervals;
 
 __device__ bool next_permutation(int* __first, int* __last);
+__device__ bool iterateNPrime(int* __begin,int* __end);
+__device__ void setMPrime( int* __nBegin, int* __mBegin );
 
-//thrust::complex<double>* dev_UTerms;
+__device__ thrust::complex<double> Uel(int i,int j){
 
-__global__ void kernel(int* dev_nPrime,int* dev_mPrime){
+    thrust::complex<double> I(0.0,1.0);
+
+    return dev_U[ 2 * ( i + j * ( ANCILLA_MODES + 4 ) ) ] + dev_U[ 2 * ( i + j * ( ANCILLA_MODES + 4 ) ) + 1 ] * I;
+
+}
+
+__global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* dev_UTermBegin,thrust::complex<double>* dev_UTermEnd,double* dev_HXYMid){
+
+    /** WRITE IN SOMETHING TO ACCOMIDATE FOR THE SITUATION WHERE 
+        WE'RE ON THE LAST TERM AND THERE ARE LESS TERMS THAN WE'RE EVALUATING  */
 
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     int term = 0;
 
+    dev_UTermEnd[ tid ] = 0;
+    dev_UTermEnd[ tid + 1 ] = 0;
+    dev_UTermEnd[ tid + 2 ] = 0;
+    dev_UTermEnd[ tid + 3 ] = 0;
+
+    dev_HXYMid[ tid ] = 0;
+
+    bool start = true;
+
     while(term < dev_termIntervals){
 
         do{
 
-            // write code to keep track of which terms of dev_UTerms belong where, factor
-            // this into the space allocation function
+            //dev_nPrime[ i + tid * (4 + ANCILLA_MODES) ];
+            //dev_mPrime[ i + tid * (2 + ANCILLA_PHOTONS) ];
 
-            // dev_nPrime[ i + tid * (4 + ANCILLA_MODES) ];
-            // dev_mPrime[ i + tid * (2 + ANCILLA_PHOTONS) ];
+            thrust::complex<double> UProdTemp(1.0,0.0);
+
+            for(int i=0;i<ANCILLA_PHOTONS;i++) UProdTemp *= Uel( i, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + i ] );
+
+            dev_UTermEnd[ tid ] += UProdTemp * (
+                                              Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                            + Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                         );
+
+            dev_UTermEnd[ tid + 1 ] += UProdTemp * (
+                                              Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                            + Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                         );
+
+            dev_UTermEnd[ tid + 2 ] += UProdTemp * (
+                                              Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                            - Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                         );
+
+            dev_UTermEnd[ tid + 3 ] += UProdTemp * (
+                                              Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                            - Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
+                                         );
 
             term++;
 
@@ -38,7 +79,55 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime){
 
         } while( next_permutation( &dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) ] , &dev_mPrime[ (tid + 1) * (ANCILLA_PHOTONS + 2) ] ) );
 
-        // iterate dev_nPrime and generate new corresponding dev_mPrime in initialized position
+        dev_UTermEnd[ tid ] *= 0.7071067811865475;
+        dev_UTermEnd[ tid + 1 ] *= 0.7071067811865475;
+        dev_UTermEnd[ tid + 2 ] *= 0.7071067811865475;
+        dev_UTermEnd[ tid + 3 ] *= 0.7071067811865475;
+
+        for(int p=0;p<ANCILLA_MODES + 4;p++){
+
+            dev_UTermEnd[ tid ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ tid + 1 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ tid + 2 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ tid + 3 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+
+        }
+
+        if(start){
+
+            dev_UTermBegin[ tid ] = dev_UTermEnd[ tid ];
+            dev_UTermBegin[ tid + 1 ] = dev_UTermEnd[ tid + 1 ];
+            dev_UTermBegin[ tid + 2 ] = dev_UTermEnd[ tid + 2 ];
+            dev_UTermBegin[ tid + 3 ] = dev_UTermEnd[ tid + 3 ];
+
+            dev_UTermEnd[ tid ] = 0;
+            dev_UTermEnd[ tid + 1 ] = 0;
+            dev_UTermEnd[ tid + 2 ] = 0;
+            dev_UTermEnd[ tid + 3 ] = 0;
+
+            start = false;
+
+        }
+
+        else if(term >= dev_termIntervals) break;
+
+        else{
+
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 1 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 1 ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 2 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 2 ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 3 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 3 ] ) );
+
+            dev_UTermEnd[ tid ] = 0;
+            dev_UTermEnd[ tid + 1 ] = 0;
+            dev_UTermEnd[ tid + 2 ] = 0;
+            dev_UTermEnd[ tid + 3 ] = 0;
+
+        }
+
+        iterateNPrime( &dev_nPrime[ tid * (4 + ANCILLA_MODES) ], &dev_nPrime[ (tid+1) * (4 + ANCILLA_MODES) ] );
+
+        setMPrime( &dev_nPrime[ tid * (4 + ANCILLA_MODES) ], &dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) ]);
 
     }
 
@@ -50,19 +139,39 @@ double CUDAOffloader::setMutualEntropy(){
 
     int* dev_nPrime;    int* dev_mPrime;
 
+    thrust::complex<double>* dev_UTermBegin;
+    thrust::complex<double>* dev_UTermEnd;
+
+    double* dev_HXYMid;
+
     cudaMalloc( (void**)&dev_nPrime, numberOfThreads * ( 4 + ANCILLA_MODES ) * sizeof(int) );
 
     cudaMalloc( (void**)&dev_mPrime, numberOfThreads * ( 2 + ANCILLA_PHOTONS ) * sizeof(int) );
+
+    cudaMalloc( (void**)&dev_UTermBegin, 4 * numberOfThreads * sizeof( thrust::complex<double> ) );
+
+    cudaMalloc( (void**)&dev_UTermEnd, 4 * numberOfThreads * sizeof( thrust::complex<double> ) );
+
+    cudaMalloc( (void**)&dev_HXYMid, numberOfThreads * sizeof(double) );
 
     cudaMemcpy( dev_nPrime, nPrimeStarter, numberOfThreads * ( 4 + ANCILLA_MODES ) * sizeof(int), cudaMemcpyHostToDevice );
 
     cudaMemcpy( dev_mPrime, mPrimeStarter, numberOfThreads * ( 2 + ANCILLA_PHOTONS ) * sizeof(int), cudaMemcpyHostToDevice );
 
-    kernel<<<blocksPerGrid,threadsPerBlock>>>(dev_nPrime,dev_mPrime);
+    kernel<<<blocksPerGrid,threadsPerBlock>>>(dev_nPrime,dev_mPrime,dev_UTermBegin,dev_UTermEnd,dev_HXYMid);
 
     cudaFree( dev_nPrime );
 
     cudaFree( dev_mPrime );
+
+    // write another GPU kernel call that goes here and takes the parallel data stored on the GPU and
+    // reduces it into a single real value of mutual entropy
+
+    cudaFree( dev_UTermBegin );
+
+    cudaFree( dev_UTermEnd );
+
+    cudaFree( dev_HXYMid );
 
     std::cout << "End." << std::endl;
 
@@ -97,13 +206,11 @@ void CUDAOffloader::allocateResources(){
 
     int spaceAvail = prop.totalGlobalMem;
 
-    int UStorageSize = ( ANCILLA_MODES + 4 ) * ( ANCILLA_MODES + 4 ) * 16;
-    int factorialStorageSize = ( ANCILLA_PHOTONS + 3 ) * 8;
-    int UTermStorageSize = 16 * HILBERT_SPACE_DIMENSION;
+    int UStorageSize = ( ANCILLA_MODES + 4 ) * ( ANCILLA_MODES + 4 ) * 2 * sizeof(double);
+    int factorialStorageSize = ( ANCILLA_PHOTONS + 3 ) * sizeof(double);
 
     spaceAvail -= UStorageSize;
     spaceAvail -= factorialStorageSize;
-    spaceAvail -= UTermStorageSize;
 
     std::cout << "Space available on GPU: " << spaceAvail << " bytes" <<std::endl << std::endl;
 
@@ -114,19 +221,27 @@ void CUDAOffloader::allocateResources(){
 
         numberOfThreads++;
 
-        spaceTaken = 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES );
+        spaceTaken = sizeof(int) * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES );
 
-        spaceTaken += 16 * numberOfThreads;
+        spaceTaken += 4 * 2 * sizeof(thrust::complex<double>) * numberOfThreads;
+
+        spaceTaken += sizeof(double) * numberOfThreads;
 
     }
 
     numberOfThreads--;
 
+    spaceTaken = sizeof(int) * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES );
+
+    spaceTaken += 4 * 2 * sizeof(thrust::complex<double>) * numberOfThreads;
+
+    spaceTaken += sizeof(double) * numberOfThreads;
+
     threadsPerBlock = 1024;
 
     std::cout << "Number of total terms: " << numberOfTerms << std::endl;
     std::cout << "Max Number of threads: " << numberOfThreads << std::endl;
-    std::cout << "Space used on GPU for this number: " << 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES + 4 ) << " bytes" << std::endl;
+    std::cout << "Space used on GPU for this number: " << spaceTaken << " bytes" << std::endl;
 
     termIntervals = ( numberOfTerms + numberOfThreads - 1 ) / numberOfThreads;
     termIntervals += TERMS_BUFFER;
@@ -145,7 +260,13 @@ void CUDAOffloader::allocateResources(){
     std::cout << "Adjusted threads per block: " << threadsPerBlock << std::endl;
     std::cout << "Adjusted blocks per grid: " << blocksPerGrid << std::endl;
 
-    std::cout << "Adjusted Space used on GPU: " << 4 * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES + 4 ) << " bytes" << std::endl;
+    spaceTaken = sizeof(int) * numberOfThreads * ( 2 + 4 + ANCILLA_PHOTONS + ANCILLA_MODES );
+
+    spaceTaken += 4 * 2 * sizeof(thrust::complex<double>) * numberOfThreads;
+
+    spaceTaken += sizeof(double) * numberOfThreads;
+
+    std::cout << "Adjusted Space used on GPU: " << spaceTaken << " bytes" << std::endl;
 
     assert( threadsPerBlock * blocksPerGrid == numberOfThreads );
 
@@ -298,5 +419,44 @@ __device__ bool next_permutation(int* __first, int* __last) {
       return false;
     }
   }
+
+}
+
+
+__device__ bool iterateNPrime(int* __begin,int* __end){
+
+    int* ptr = __end - 2;
+
+    while( *ptr == 0 ){
+
+        if( ptr == __begin ) return false;
+
+        ptr--;
+
+    }
+
+    *ptr -= 1;
+
+    *( ptr + 1 ) = *( __end -1 ) + 1;
+
+    if( ptr + 1 != __end - 1 ) *( __end - 1 ) = 0;
+
+    return true;
+
+}
+
+__device__ void setMPrime( int* __nBegin, int* __mBegin ){
+
+    int k=0;
+
+    for(int i=0;i<ANCILLA_MODES+4;i++) for(int j=0;j < *(__nBegin + i);j++){
+
+            *( __mBegin + k ) = i;
+
+            k++;
+
+    }
+
+    return;
 
 }

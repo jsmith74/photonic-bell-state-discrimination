@@ -2,12 +2,6 @@
 
 
 
-LinearOpticalTransform::LinearOpticalTransform(){
-
-
-
-}
-
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     ancillaPhotons = ancillaP;
@@ -250,4 +244,103 @@ double LinearOpticalTransform::doublefactorial(int x){
         total=-1;
     }
     return total;
+}
+
+
+//#define ANCILLA_PHOTONS 6
+//#define ANCILLA_MODES 8
+
+//bool iterateNPrime(int* __begin,int* __end){
+//
+//    int* ptr = __end - 2;
+//
+//    while( *ptr == 0 ){
+//
+//        if( ptr == __begin ) return false;
+//
+//        ptr--;
+//
+//    }
+//
+//    *ptr -= 1;
+//
+//    *( ptr + 1 ) = *( __end -1 ) + 1;
+//
+//    if( ptr + 1 != __end - 1 ) *( __end - 1 ) = 0;
+//
+//    return true;
+//
+//}
+//
+//void setMPrime( int* __nBegin, int* __mBegin ){
+//
+//    int k=0;
+//
+//    for(int i=0;i<ANCILLA_MODES+4;i++) for(int j=0;j < *(__nBegin + i);j++){
+//
+//            *( __mBegin + k ) = i;
+//
+//            k++;
+//
+//    }
+//
+//    return;
+//
+//}
+
+LinearOpticalTransform::LinearOpticalTransform(){
+
+    /** === TESTING MY ITERATE N FUNCTION ======= */
+
+//    int photons = 8;
+//    int modes = 12;
+//
+//    Eigen::MatrixXi outBasis;
+//
+//    setToFullHilbertSpace( photons, modes, outBasis);
+//
+//    std::cout << outBasis << std::endl << std::endl;
+//
+//    int nPrimeTest[ modes ];
+//    int mPrimeTest[ photons ];
+//
+//    for(int i=0;i<modes;i++) nPrimeTest[i] = 0;
+//    nPrimeTest[0] = photons;
+//
+//    int k = 0;
+//
+//    do{
+//
+//        for(int i=0;i<modes;i++) std::cout << nPrimeTest[i] << " ";
+//        std::cout << std::endl;
+//
+//        setMPrime( &nPrimeTest[0],&mPrimeTest[0] );
+//
+//        for(int i=0;i<photons;i++) std::cout << mPrimeTest[i] << " ";
+//        std::cout << std::endl;
+//
+//        std::vector<int> mPrimeKnownCompare,nPrimeKnownCompare;
+//        mPrimeKnownCompare.resize( photons );
+//        nPrimeKnownCompare.resize( modes );
+//        for(int i=0;i<modes;i++) nPrimeKnownCompare[i] = outBasis(k,i);
+//        setmVec(mPrimeKnownCompare,nPrimeKnownCompare);
+//
+//
+//        for(int i=0;i<photons;i++) std::cout << mPrimeKnownCompare[i] << " ";
+//        std::cout << std::endl;
+//
+//        for(int i=0;i<modes;i++) assert( outBasis(k,i) == nPrimeTest[i] );
+//        for(int i=0;i<photons;i++) assert( mPrimeKnownCompare[i] == mPrimeTest[i] );
+//
+//        k++;
+//
+//    } while( iterateNPrime(&nPrimeTest[0],&nPrimeTest[modes]) );
+//
+//    assert( k = outBasis.rows() );
+//
+//    assert( false && "SUCCESS");
+
+
+    /** ========================================= */
+
 }
