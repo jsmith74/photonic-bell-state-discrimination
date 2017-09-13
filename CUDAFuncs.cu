@@ -4,7 +4,7 @@
 #define ANCILLA_MODES 8
 #define HILBERT_SPACE_DIMENSION 75582
 
-#define TERMS_BUFFER 1
+#define TERMS_BUFFER 0
 
 // REMEMBER TO DELETE DYNAMIC MEMORY DECLARED BY nPrimeStarter and mPrimeStarter AT THE END OF THE OPTIMIZATION ROUTINE
 
@@ -25,9 +25,6 @@ __device__ thrust::complex<double> Uel(int i,int j){
 }
 
 __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* dev_UTermBegin,thrust::complex<double>* dev_UTermEnd,double* dev_HXYMid){
-
-    /** WRITE IN SOMETHING TO ACCOMIDATE FOR THE SITUATION WHERE 
-        WE'RE ON THE LAST TERM AND THERE ARE LESS TERMS THAN WE'RE EVALUATING  */
 
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -124,6 +121,8 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
             dev_UTermEnd[ tid + 3 ] = 0;
 
         }
+
+        if( tid == gridDim.x * blockDim.x - 1 && dev_nPrime[ ( tid + 1 ) * (4 + ANCILLA_MODES) - 1 ] == 2 + ANCILLA_PHOTONS ) break;
 
         iterateNPrime( &dev_nPrime[ tid * (4 + ANCILLA_MODES) ], &dev_nPrime[ (tid+1) * (4 + ANCILLA_MODES) ] );
 
