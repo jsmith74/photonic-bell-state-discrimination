@@ -3,7 +3,9 @@
 
 #include <vector>
 #include <algorithm>
-
+#include <iostream>
+#include <assert.h>
+#include <Eigen/Dense>
 
 class OptimizedFunctions{
 
@@ -11,7 +13,7 @@ class OptimizedFunctions{
 
         OptimizedFunctions();
         void initializeStartingNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime,int nPrimeStarter[],int mPrimeStarter[],int numberOfThreads,int termIntervals);
-
+        void setReduceGrid(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime,int termIntervals,Eigen::MatrixXi& tempReduceGrid);
 
     private:
 

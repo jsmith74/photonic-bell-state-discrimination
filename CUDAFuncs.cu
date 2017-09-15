@@ -4,13 +4,14 @@
 #define ANCILLA_MODES 8
 #define HILBERT_SPACE_DIMENSION 75582
 
-#define TERMS_BUFFER 0
+#define TERMS_BUFFER 20
 
-// REMEMBER TO DELETE DYNAMIC MEMORY DECLARED BY nPrimeStarter and mPrimeStarter AT THE END OF THE OPTIMIZATION ROUTINE
+// REMEMBER TO DELETE DYNAMIC MEMORY DECLARED BY nPrimeStarter and mPrimeStarter and reduceGridStart and reduceGridEnd AT THE END OF THE OPTIMIZATION ROUTINE
 
 __constant__ double dev_factorial[ ANCILLA_PHOTONS + 2 + 1 ];
 __constant__ double dev_U[ 2 * (ANCILLA_MODES + 4) * (ANCILLA_MODES + 4) ];
 __constant__ int dev_termIntervals;
+__constant__ int dev_reduceGridSize;
 
 __device__ bool next_permutation(int* __first, int* __last);
 __device__ bool iterateNPrime(int* __begin,int* __end);
@@ -42,9 +43,6 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
     while(term < dev_termIntervals){
 
         do{
-
-            //dev_nPrime[ i + tid * (4 + ANCILLA_MODES) ];
-            //dev_mPrime[ i + tid * (2 + ANCILLA_PHOTONS) ];
 
             thrust::complex<double> UProdTemp(1.0,0.0);
 
@@ -132,6 +130,44 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
 }
 
+__global__ void reduce(thrust::complex<double>* dev_UTermBegin,thrust::complex<double>* dev_UTermEnd,double* dev_HXYMid,int* dev_reduceGridStart,int* dev_reduceGridEnd){
+
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if( tid < dev_reduceGridSize ){
+
+        // BUT IN CODE HERE TO COMBINE THE BLOCKS TOGETHER
+
+    }
+
+}
+
+void CUDAOffloader::setReduceGrid(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime){
+
+    Eigen::MatrixXi tempReduceGrid;
+
+    gccCompiledFunctions.setReduceGrid(nPrime,mPrime,termIntervals,tempReduceGrid);
+
+    reduceGridSize = tempReduceGrid.rows();
+
+    reduceGridStart = new int[ reduceGridSize ];
+    reduceGridEnd = new int[ reduceGridSize ];
+
+    for(int i=0;i<reduceGridSize;i++){
+
+        reduceGridStart[i] = tempReduceGrid(i,0);
+        reduceGridEnd[i] = tempReduceGrid(i,1);
+
+    }
+
+    tempReduceGrid.resize(0,0);
+
+    cudaMemcpyToSymbol( dev_reduceGridSize,&reduceGridSize, sizeof(int) );
+
+    return;
+
+}
+
 double CUDAOffloader::setMutualEntropy(){
 
     std::cout << "Begin..." << std::endl;
@@ -163,8 +199,19 @@ double CUDAOffloader::setMutualEntropy(){
 
     cudaFree( dev_mPrime );
 
-    // write another GPU kernel call that goes here and takes the parallel data stored on the GPU and
-    // reduces it into a single real value of mutual entropy
+    int* dev_reduceGridStart;
+    int* dev_reduceGridEnd;
+
+    cudaMalloc( (void**)&dev_reduceGridStart, reduceGridSize * sizeof(int) );
+    cudaMalloc( (void**)&dev_reduceGridEnd, reduceGridSize * sizeof(int) );
+
+    cudaMemcpy( dev_reduceGridStart,reduceGridStart,reduceGridSize * sizeof(int),cudaMemcpyHostToDevice );
+    cudaMemcpy( dev_reduceGridEnd,reduceGridEnd,reduceGridSize * sizeof(int),cudaMemcpyHostToDevice );
+
+    reduce<<<blocksPerGrid,threadsPerBlock>>>(dev_UTermBegin,dev_UTermEnd,dev_HXYMid,dev_reduceGridStart,dev_reduceGridEnd);
+
+    cudaFree( dev_reduceGridStart );
+    cudaFree( dev_reduceGridEnd );
 
     cudaFree( dev_UTermBegin );
 

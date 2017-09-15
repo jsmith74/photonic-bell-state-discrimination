@@ -33,6 +33,8 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     OffloadtoGPU.initializeStartingNPrimeMPrime(nPrime,mPrime);
 
+    OffloadtoGPU.setReduceGrid(nPrime,mPrime);
+
     nPrime.resize( 0 );
     mPrime.resize( 0 );
 

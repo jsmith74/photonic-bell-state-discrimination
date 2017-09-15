@@ -20,14 +20,18 @@ class CUDAOffloader{
         void sendFactorialToGPU(std::vector<double>& factorial);
         void initializeStartingNPrimeMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
         double setMutualEntropy();
+        void setReduceGrid(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
 
         int numberOfTerms;
 
     private:
 
-        int blocksPerGrid, threadsPerBlock, numberOfThreads, termIntervals;
+        int blocksPerGrid, threadsPerBlock, numberOfThreads, termIntervals, reduceGridSize;
         int* nPrimeStarter;
         int* mPrimeStarter;
+        int* reduceGridStart;
+        int* reduceGridEnd;
+        int* reducePatchGrid;
         OptimizedFunctions gccCompiledFunctions;
 
 };
