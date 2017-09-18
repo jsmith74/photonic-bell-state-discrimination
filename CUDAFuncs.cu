@@ -31,10 +31,10 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
     int term = 0;
 
-    dev_UTermEnd[ tid ] = 0;
-    dev_UTermEnd[ tid + 1 ] = 0;
-    dev_UTermEnd[ tid + 2 ] = 0;
-    dev_UTermEnd[ tid + 3 ] = 0;
+    dev_UTermEnd[ 4 * tid ] = 0;
+    dev_UTermEnd[ 4 * tid + 1 ] = 0;
+    dev_UTermEnd[ 4 * tid + 2 ] = 0;
+    dev_UTermEnd[ 4 * tid + 3 ] = 0;
 
     dev_HXYMid[ tid ] = 0;
 
@@ -48,22 +48,22 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
             for(int i=0;i<ANCILLA_PHOTONS;i++) UProdTemp *= Uel( i, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + i ] );
 
-            dev_UTermEnd[ tid ] += UProdTemp * (
+            dev_UTermEnd[ 4 * tid ] += UProdTemp * (
                                               Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                             + Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                          );
 
-            dev_UTermEnd[ tid + 1 ] += UProdTemp * (
+            dev_UTermEnd[ 4 * tid + 1 ] += UProdTemp * (
                                               Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                             + Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                          );
 
-            dev_UTermEnd[ tid + 2 ] += UProdTemp * (
+            dev_UTermEnd[ 4 * tid + 2 ] += UProdTemp * (
                                               Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                             - Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                          );
 
-            dev_UTermEnd[ tid + 3 ] += UProdTemp * (
+            dev_UTermEnd[ 4 * tid + 3 ] += UProdTemp * (
                                               Uel( ANCILLA_MODES , dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 3, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                             - Uel( ANCILLA_MODES + 1, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS ] ) * Uel( ANCILLA_MODES + 2, dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) + ANCILLA_PHOTONS + 1 ] )
                                          );
@@ -74,31 +74,31 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
         } while( next_permutation( &dev_mPrime[ tid * (ANCILLA_PHOTONS + 2) ] , &dev_mPrime[ (tid + 1) * (ANCILLA_PHOTONS + 2) ] ) );
 
-        dev_UTermEnd[ tid ] *= 0.7071067811865475;
-        dev_UTermEnd[ tid + 1 ] *= 0.7071067811865475;
-        dev_UTermEnd[ tid + 2 ] *= 0.7071067811865475;
-        dev_UTermEnd[ tid + 3 ] *= 0.7071067811865475;
+        dev_UTermEnd[ 4 * tid ] *= 0.7071067811865475;
+        dev_UTermEnd[ 4 * tid + 1 ] *= 0.7071067811865475;
+        dev_UTermEnd[ 4 * tid + 2 ] *= 0.7071067811865475;
+        dev_UTermEnd[ 4 * tid + 3 ] *= 0.7071067811865475;
 
         for(int p=0;p<ANCILLA_MODES + 4;p++){
 
-            dev_UTermEnd[ tid ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
-            dev_UTermEnd[ tid + 1 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
-            dev_UTermEnd[ tid + 2 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
-            dev_UTermEnd[ tid + 3 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ 4 * tid ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ 4 * tid + 1 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ 4 * tid + 2 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
+            dev_UTermEnd[ 4 * tid + 3 ] *= sqrt( dev_factorial[ dev_nPrime[ tid * (4 + ANCILLA_MODES) + p ] ] );
 
         }
 
         if(start){
 
-            dev_UTermBegin[ tid ] = dev_UTermEnd[ tid ];
-            dev_UTermBegin[ tid + 1 ] = dev_UTermEnd[ tid + 1 ];
-            dev_UTermBegin[ tid + 2 ] = dev_UTermEnd[ tid + 2 ];
-            dev_UTermBegin[ tid + 3 ] = dev_UTermEnd[ tid + 3 ];
+            dev_UTermBegin[ 4 * tid ] = dev_UTermEnd[ 4 * tid ];
+            dev_UTermBegin[ 4 * tid + 1 ] = dev_UTermEnd[ 4 * tid + 1 ];
+            dev_UTermBegin[ 4 * tid + 2 ] = dev_UTermEnd[ 4 * tid + 2 ];
+            dev_UTermBegin[ 4 * tid + 3 ] = dev_UTermEnd[ 4 * tid + 3 ];
 
-            dev_UTermEnd[ tid ] = 0;
-            dev_UTermEnd[ tid + 1 ] = 0;
-            dev_UTermEnd[ tid + 2 ] = 0;
-            dev_UTermEnd[ tid + 3 ] = 0;
+            dev_UTermEnd[ 4 * tid ] = 0;
+            dev_UTermEnd[ 4 * tid + 1 ] = 0;
+            dev_UTermEnd[ 4 * tid + 2 ] = 0;
+            dev_UTermEnd[ 4 * tid + 3 ] = 0;
 
             start = false;
 
@@ -108,15 +108,15 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
         else{
 
-            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid ] ) );
-            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 1 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 1 ] ) );
-            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 2 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 2 ] ) );
-            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ tid + 3 ] ) * log2( ( thrust::norm( dev_UTermEnd[ tid ] ) + thrust::norm( dev_UTermEnd[ tid + 1 ] ) + thrust::norm( dev_UTermEnd[ tid + 2 ] ) + thrust::norm( dev_UTermEnd[ tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ tid + 3 ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ 4 * tid ] ) * log2( ( thrust::norm( dev_UTermEnd[ 4 * tid ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ 4 * tid ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) * log2( ( thrust::norm( dev_UTermEnd[ 4 * tid ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) * log2( ( thrust::norm( dev_UTermEnd[ 4 * tid ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) );
+            dev_HXYMid[ tid ] += thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) * log2( ( thrust::norm( dev_UTermEnd[ 4 * tid ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 1 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 2 ] ) + thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) ) / thrust::norm( dev_UTermEnd[ 4 * tid + 3 ] ) );
 
-            dev_UTermEnd[ tid ] = 0;
-            dev_UTermEnd[ tid + 1 ] = 0;
-            dev_UTermEnd[ tid + 2 ] = 0;
-            dev_UTermEnd[ tid + 3 ] = 0;
+            dev_UTermEnd[ 4 * tid ] = 0;
+            dev_UTermEnd[ 4 * tid + 1 ] = 0;
+            dev_UTermEnd[ 4 * tid + 2 ] = 0;
+            dev_UTermEnd[ 4 * tid + 3 ] = 0;
 
         }
 
@@ -130,13 +130,66 @@ __global__ void kernel(int* dev_nPrime,int* dev_mPrime,thrust::complex<double>* 
 
 }
 
-__global__ void reduce(thrust::complex<double>* dev_UTermBegin,thrust::complex<double>* dev_UTermEnd,double* dev_HXYMid,int* dev_reduceGridStart,int* dev_reduceGridEnd){
+__global__ void reduce(thrust::complex<double>* dev_UTermBegin,thrust::complex<double>* dev_UTermEnd,double* dev_HXYMid,int* dev_reduceGridStart,int* dev_reduceGridEnd,double* dev_result){
 
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     if( tid < dev_reduceGridSize ){
 
-        // BUT IN CODE HERE TO COMBINE THE BLOCKS TOGETHER
+        double HXY = 0.0;
+
+        thrust::complex<double> stateAmp[4];
+
+        stateAmp[0] = 0.0;
+        stateAmp[1] = 0.0;
+        stateAmp[2] = 0.0;
+        stateAmp[3] = 0.0;
+
+        stateAmp[0] += dev_UTermEnd[ 4 * dev_reduceGridStart[tid] ];
+        stateAmp[1] += dev_UTermEnd[ 4 * dev_reduceGridStart[tid] + 1 ];
+        stateAmp[2] += dev_UTermEnd[ 4 * dev_reduceGridStart[tid] + 2 ];
+        stateAmp[3] += dev_UTermEnd[ 4 * dev_reduceGridStart[tid] + 3 ];
+
+        for(int i=dev_reduceGridStart[tid]+1;i<dev_reduceGridEnd[tid];i++){
+
+            HXY += dev_HXYMid[i];
+
+            stateAmp[0] += dev_UTermBegin[ 4*i ] + dev_UTermEnd[ 4*i ];
+            stateAmp[1] += dev_UTermBegin[ 4*i + 1 ] + dev_UTermEnd[ 4*i + 1 ];
+            stateAmp[2] += dev_UTermBegin[ 4*i + 2 ] + dev_UTermEnd[ 4*i + 2 ];
+            stateAmp[3] += dev_UTermBegin[ 4*i + 3 ] + dev_UTermEnd[ 4*i + 3 ];
+
+        }
+
+        stateAmp[0] += dev_UTermBegin[ 4 * dev_reduceGridEnd[tid] ];
+        stateAmp[1] += dev_UTermBegin[ 4 * dev_reduceGridEnd[tid] + 1 ];
+        stateAmp[2] += dev_UTermBegin[ 4 * dev_reduceGridEnd[tid] + 2 ];
+        stateAmp[3] += dev_UTermBegin[ 4 * dev_reduceGridEnd[tid] + 3 ];
+
+        if( tid == 0 ){
+
+            stateAmp[0] += dev_UTermBegin[ 4 * dev_reduceGridStart[0] ];
+            stateAmp[1] += dev_UTermBegin[ 4 * dev_reduceGridStart[0] + 1 ];
+            stateAmp[2] += dev_UTermBegin[ 4 * dev_reduceGridStart[0] + 2 ];
+            stateAmp[3] += dev_UTermBegin[ 4 * dev_reduceGridStart[0] + 3 ];
+
+        }
+
+        if( tid == dev_reduceGridSize - 1 ){
+
+                stateAmp[0] += dev_UTermEnd[ 4 * dev_reduceGridEnd[tid] ];
+                stateAmp[1] += dev_UTermEnd[ 4 * dev_reduceGridEnd[tid] + 1 ];
+                stateAmp[2] += dev_UTermEnd[ 4 * dev_reduceGridEnd[tid] + 2 ];
+                stateAmp[3] += dev_UTermEnd[ 4 * dev_reduceGridEnd[tid] + 3 ];
+
+        }
+
+        HXY += thrust::norm( stateAmp[0] ) * log2( ( thrust::norm(stateAmp[0]) + thrust::norm(stateAmp[1]) + thrust::norm(stateAmp[2]) + thrust::norm(stateAmp[3]) ) / thrust::norm(stateAmp[0]) );
+        HXY += thrust::norm( stateAmp[1] ) * log2( ( thrust::norm(stateAmp[0]) + thrust::norm(stateAmp[1]) + thrust::norm(stateAmp[2]) + thrust::norm(stateAmp[3]) ) / thrust::norm(stateAmp[1]) );
+        HXY += thrust::norm( stateAmp[2] ) * log2( ( thrust::norm(stateAmp[0]) + thrust::norm(stateAmp[1]) + thrust::norm(stateAmp[2]) + thrust::norm(stateAmp[3]) ) / thrust::norm(stateAmp[2]) );
+        HXY += thrust::norm( stateAmp[3] ) * log2( ( thrust::norm(stateAmp[0]) + thrust::norm(stateAmp[1]) + thrust::norm(stateAmp[2]) + thrust::norm(stateAmp[3]) ) / thrust::norm(stateAmp[3]) );
+
+        dev_result[ tid ] = HXY;
 
     }
 
@@ -171,6 +224,8 @@ void CUDAOffloader::setReduceGrid(std::vector< std::vector<int> >& nPrime,std::v
 double CUDAOffloader::setMutualEntropy(){
 
     std::cout << "Begin..." << std::endl;
+
+    double t1 = omp_get_wtime();
 
     int* dev_nPrime;    int* dev_mPrime;
 
@@ -208,9 +263,22 @@ double CUDAOffloader::setMutualEntropy(){
     cudaMemcpy( dev_reduceGridStart,reduceGridStart,reduceGridSize * sizeof(int),cudaMemcpyHostToDevice );
     cudaMemcpy( dev_reduceGridEnd,reduceGridEnd,reduceGridSize * sizeof(int),cudaMemcpyHostToDevice );
 
-    reduce<<<blocksPerGrid,threadsPerBlock>>>(dev_UTermBegin,dev_UTermEnd,dev_HXYMid,dev_reduceGridStart,dev_reduceGridEnd);
+    assert( blocksPerGrid * threadsPerBlock >= reduceGridSize );
+
+    double* dev_result;
+
+    cudaMalloc( (void**)&dev_result, reduceGridSize * sizeof(double) );
+
+    reduce<<<blocksPerGrid,threadsPerBlock>>>(dev_UTermBegin,dev_UTermEnd,dev_HXYMid,dev_reduceGridStart,dev_reduceGridEnd,dev_result);
+
+    double result[ reduceGridSize ];
+
+    cudaMemcpy( result, dev_result, reduceGridSize * sizeof(double), cudaMemcpyDeviceToHost );
+
+    cudaFree( dev_result );
 
     cudaFree( dev_reduceGridStart );
+
     cudaFree( dev_reduceGridEnd );
 
     cudaFree( dev_UTermBegin );
@@ -219,11 +287,19 @@ double CUDAOffloader::setMutualEntropy(){
 
     cudaFree( dev_HXYMid );
 
+    double output = 0;
+
+    for(int i=0;i<reduceGridSize;i++) output += result[ i ];
+
+    double t2 = omp_get_wtime();
+
+    std::cout << "Running time: " << std::setprecision(16) << t2 - t1 << " seconds." << std::endl;
+
     std::cout << "End." << std::endl;
 
     std::cout << "CUDA Errors: " << cudaGetErrorString( cudaGetLastError() ) << std::endl;
 
-    return 1.0;
+    return output;
 
 }
 

@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <iostream>
+#include <iomanip>
 #include <thrust/complex.h>
 #include <omp.h>
 #include <vector>
