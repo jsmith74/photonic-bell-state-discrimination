@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iomanip>
 #include <unsupported/Eigen/MatrixFunctions>
+#include <omp.h>
 
 class MeritFunction{
 
