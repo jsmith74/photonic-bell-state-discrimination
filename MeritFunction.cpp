@@ -60,6 +60,20 @@ double MeritFunction::f(Eigen::VectorXd& position){
 
     std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
 
+    position = Eigen::VectorXd::Random( position.size() );
+
+    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
+
+    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) *= std::exp( I * position(i + funcDimension/2) );
+
+    Eigen::JacobiSVD<Eigen::MatrixXcd> svd2(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    if( svd2.singularValues()(0) > 1 ) U /= svd2.singularValues()(0);
+
+    LOCircuit.setMutualEntropy(U);
+
+    std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+
     assert( false );
 
     return LOCircuit.mutualEntropy;

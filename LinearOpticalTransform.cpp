@@ -24,6 +24,13 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     setParallelGrid();
 
+    nPrime.resize( HSDimension );
+    mPrime.resize( HSDimension );
+
+    for(int i=0;i<HSDimension;i++){ nPrime.at(i).resize(ancillaModes + 4); mPrime.at(i).resize(ancillaPhotons + 2); }
+
+    setNPrimeAndMPrime(nPrime,mPrime);
+
     return;
 
 }
@@ -52,16 +59,6 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     int threadID = omp_get_thread_num();
 
-    int nPrime[ 4 + ancillaModes ];
-    int mPrime[ 2 + ancillaPhotons ];
-
-    nPrime[0] = 2 + ancillaPhotons;
-
-    for(int i=1;i<4+ancillaModes;i++) nPrime[i] = 0;
-
-    setMPrime( &nPrime[0],&mPrime[0] );
-
-
     for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
 
         std::complex<double> stateAmplitude[4];
@@ -73,11 +70,11 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         do{
 
-            setStateAmplitude(stateAmplitude,U,mPrime);
+            setStateAmplitude(stateAmplitude,U,y);
 
-        } while( std::next_permutation( &mPrime[0],&mPrime[ancillaPhotons+2] ) );
+        } while( std::next_permutation( mPrime[y].begin(), mPrime[y].end() ) );
 
-        normalizeStateAmplitude(stateAmplitude,nPrime);
+        normalizeStateAmplitude(stateAmplitude,y);
 
         pyx[0] = std::norm( stateAmplitude[0] );
         pyx[1] = std::norm( stateAmplitude[1] );
@@ -93,10 +90,6 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
         totalPyx1 += pyx[1];
         totalPyx2 += pyx[2];
         totalPyx3 += pyx[3];
-
-        iterateNPrime( &nPrime[0],&nPrime[4+ancillaModes] );
-
-        setMPrime( &nPrime[0],&mPrime[0] );
 
     }
 
