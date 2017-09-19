@@ -6,66 +6,7 @@ LinearOpticalTransform::LinearOpticalTransform(){
 
 }
 
-void LinearOpticalTransform::checkThreadsAndProcs(){
 
-    int numProcs = omp_get_num_procs();
-
-#pragma omp parallel
-{
-
-    int numThreads = omp_get_num_threads();
-
-    assert( numThreads == numProcs );
-
-}
-
-    return;
-
-}
-
-
-void LinearOpticalTransform::setParallelGrid(){
-
-    int numProcs = omp_get_num_procs();
-
-    int nPrime[ 4 + ancillaModes ];
-    int mPrime[ 2 + ancillaPhotons ];
-
-    nPrime[0] = 2 + ancillaPhotons;
-
-    for(int i=1;i<4+ancillaModes;i++) nPrime[i] = 0;
-
-    setMPrime( &nPrime[0],&mPrime[0] );
-
-    int k = 0;
-
-    for(int y=0;y<HSDimension;y++){
-
-        do{
-
-            assert( k < 2147483645 );
-
-            k++;
-
-        } while( std::next_permutation( &mPrime[0],&mPrime[ancillaPhotons+2] ) );
-
-        iterateNPrime( &nPrime[0],&nPrime[4+ancillaModes] );
-
-        setMPrime( &nPrime[0],&mPrime[0] );
-
-    }
-
-    termsPerThread = k / numProcs;
-
-    assert( termsPerThread * numProcs == k );
-
-    // write a parallelization for this - divvy up the work appropriately (as evenly as possible and sequential without having state amplitudes crossing over omp boundaries)
-    // only iterate through the ones you have to on a particular thread;
-    //
-
-    return;
-
-}
 
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
@@ -106,13 +47,10 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         ========================================================= */
 
-//#pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
+#pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
 {
 
-    int numbThreads = omp_get_num_threads();
     int threadID = omp_get_thread_num();
-
-    int k = 0;
 
     int nPrime[ 4 + ancillaModes ];
     int mPrime[ 2 + ancillaPhotons ];
@@ -123,7 +61,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     setMPrime( &nPrime[0],&mPrime[0] );
 
-    for(int y=0;y<HSDimension;y++){
+
+    for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
 
         std::complex<double> stateAmplitude[4];
 
@@ -134,13 +73,7 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         do{
 
-            if( k % numbThreads == threadID ){
-
-                setStateAmplitude(stateAmplitude,U,mPrime);
-
-            }
-
-            k++;
+            setStateAmplitude(stateAmplitude,U,mPrime);
 
         } while( std::next_permutation( &mPrime[0],&mPrime[ancillaPhotons+2] ) );
 
@@ -351,3 +284,122 @@ void LinearOpticalTransform::setMPrime( int* __nBegin, int* __mBegin ){
 
 }
 
+void LinearOpticalTransform::checkThreadsAndProcs(){
+
+#pragma omp parallel
+{
+
+    int threadID = omp_get_thread_num();
+
+    if(threadID == 0) numProcs = omp_get_num_procs();
+
+}
+
+    return;
+
+}
+
+
+void LinearOpticalTransform::setParallelGrid(){
+
+    int nPrime[ 4 + ancillaModes ];
+    int mPrime[ 2 + ancillaPhotons ];
+
+    nPrime[0] = 2 + ancillaPhotons;
+
+    for(int i=1;i<4+ancillaModes;i++) nPrime[i] = 0;
+
+    setMPrime( &nPrime[0],&mPrime[0] );
+
+    int k = 0;
+
+    int maxTerms = 0;
+
+    for(int y=0;y<HSDimension;y++){
+
+        int j = 0;
+
+        do{
+
+            assert( k < 2147483645 );
+
+            j++;
+
+            k++;
+
+        } while( std::next_permutation( &mPrime[0],&mPrime[ancillaPhotons+2] ) );
+
+        maxTerms = std::max( j,maxTerms );
+
+        iterateNPrime( &nPrime[0],&nPrime[4+ancillaModes] );
+
+        setMPrime( &nPrime[0],&mPrime[0] );
+
+    }
+
+    termsPerThread = ( k + numProcs - 1 ) / numProcs;
+
+    assert( termsPerThread * numProcs >= k );
+
+    assert( maxTerms <= termsPerThread );
+
+    nPrime[0] = 2 + ancillaPhotons;
+
+    for(int i=1;i<4+ancillaModes;i++) nPrime[i] = 0;
+
+    setMPrime( &nPrime[0],&mPrime[0] );
+
+    int termTracker = 0;
+
+    Eigen::VectorXi tempDist(1);
+    Eigen::VectorXi termCounter(0);
+
+    tempDist(0) = 0;
+
+    for(int y=0;y<HSDimension;y++){
+
+        int j = 0;
+
+        do{
+
+            j++;
+
+        } while( std::next_permutation( &mPrime[0],&mPrime[ancillaPhotons+2] ) );
+
+        termTracker += j;
+
+        if( termTracker > termsPerThread || y == HSDimension - 1 ){
+
+            tempDist.conservativeResize( tempDist.size() + 1 );
+            tempDist( tempDist.size() -1 ) = y + 1;
+
+            termCounter.conservativeResize( termCounter.size() + 1 );
+            termCounter( termCounter.size() - 1 ) = termTracker;
+
+            termTracker = 0;
+
+        }
+
+        iterateNPrime( &nPrime[0],&nPrime[4+ancillaModes] );
+
+        setMPrime( &nPrime[0],&mPrime[0] );
+
+    }
+
+    assert( tempDist( tempDist.size() -1 ) == HSDimension );
+
+    parallelGrid.resize( tempDist.size() );
+
+    for(int i=0;i<parallelGrid.size();i++) parallelGrid[i] = tempDist(i);
+
+    std::ofstream outfile( "distributionCheck.dat" );
+
+    for(int i=0;i<termCounter.size();i++) outfile << i + 1 << "\t" << termCounter(i) << "\n";
+
+    outfile.close();
+
+    assert( termCounter.sum() == k );
+
+    return;
+
+}

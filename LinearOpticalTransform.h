@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <omp.h>
+#include <fstream>
 
 
 class LinearOpticalTransform{
@@ -20,8 +21,9 @@ class LinearOpticalTransform{
 
     private:
 
-        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread;
+        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs;
         std::vector<double> factorial;
+        std::vector<int> parallelGrid;
 
         int g(const int& n,const int& m);
         double doublefactorial(int x);
