@@ -24,12 +24,28 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     setParallelGrid();
 
-    nPrime.resize( HSDimension );
-    mPrime.resize( HSDimension );
+    nPrime = new int[ HSDimension * (4 + ancillaModes) ];
+    mPrime = new int[ HSDimension * (2 + ancillaPhotons) ];
 
-    for(int i=0;i<HSDimension;i++){ nPrime.at(i).resize(ancillaModes + 4); mPrime.at(i).resize(ancillaPhotons + 2); }
+    std::vector< std::vector<int> > nPrimeTemp,mPrimeTemp;
 
-    setNPrimeAndMPrime(nPrime,mPrime);
+    nPrimeTemp.resize( HSDimension );
+    mPrimeTemp.resize( HSDimension );
+
+    for(int i=0;i<HSDimension;i++){ nPrimeTemp.at(i).resize(ancillaModes + 4); mPrimeTemp.at(i).resize(ancillaPhotons + 2); }
+
+    setNPrimeAndMPrime(nPrimeTemp,mPrimeTemp);
+
+    for(int y=0;y<HSDimension;y++){
+
+        for(int i=0;i<4+ancillaModes;i++) nPrime[ y*(4+ancillaModes) + i ] = nPrimeTemp[y][i];
+
+        for(int i=0;i<2+ancillaPhotons;i++) mPrime[ y*(2+ancillaPhotons) + i ] = mPrimeTemp[y][i];
+
+    }
+
+    nPrimeTemp.resize(0);
+    mPrimeTemp.resize(0);
 
     return;
 
@@ -55,6 +71,7 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         ========================================================= */
 
+
 #pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
 {
 
@@ -71,11 +88,37 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         do{
 
-            setStateAmplitude(stateAmplitude,U,y);
+            std::complex<double> UProdTemp(1.0,0.0);
 
-        } while( std::next_permutation( mPrime[y].begin(), mPrime[y].end() ) );
+            for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
 
-        normalizeStateAmplitude(stateAmplitude,y);
+            stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+        } while( std::next_permutation( &mPrime[ y * (2+ancillaPhotons) ], &mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
+
+        stateAmplitude[0] *= 0.7071067811865475;
+        stateAmplitude[1] *= 0.7071067811865475;
+        stateAmplitude[2] *= 0.7071067811865475;
+        stateAmplitude[3] *= 0.7071067811865475;
+
+        for(int p=0;p<ancillaModes+4;p++){
+
+            stateAmplitude[0] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+            stateAmplitude[1] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+            stateAmplitude[2] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+            stateAmplitude[3] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+
+        }
 
         pyx[0] = std::norm( stateAmplitude[0] );
         pyx[1] = std::norm( stateAmplitude[1] );
@@ -279,6 +322,7 @@ void LinearOpticalTransform::setMPrime( int* __nBegin, int* __mBegin ){
 }
 
 void LinearOpticalTransform::checkThreadsAndProcs(){
+
 
 #pragma omp parallel
 {
