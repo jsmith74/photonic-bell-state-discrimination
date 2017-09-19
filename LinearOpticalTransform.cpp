@@ -50,7 +50,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
     /** ===== NOTE ==============================================
 
             THE REDUCTION OVER totalPyxN IS UNNESSESSARY FOR THE
-            CASE OF UNITARY U - REMOVE THOSE TERMS FROM THE REDUCTION PRAGMA IN THOSE CASES (THE REDUCTION IS KIND OF EXPENSIVE)
+            CASE OF UNITARY U - REMOVE THOSE TERMS FROM THE REDUCTION PRAGMA IN THOSE CASES
+            (THE REDUCTION IS EXPENSIVE)
 
         ========================================================= */
 
@@ -284,9 +285,17 @@ void LinearOpticalTransform::checkThreadsAndProcs(){
 
     int threadID = omp_get_thread_num();
 
-    if(threadID == 0) numProcs = omp_get_num_procs();
+    if(threadID == 0) numProcs = omp_get_num_threads();
 
 }
+
+    std::ofstream outfile("timingTest.dat",std::ofstream::app);
+
+    outfile << numProcs << "\t";
+
+
+
+    outfile.close();
 
     return;
 
@@ -345,7 +354,10 @@ void LinearOpticalTransform::setParallelGrid(){
     int termTracker = 0;
 
     Eigen::VectorXi tempDist(1);
-    Eigen::VectorXi termCounter(0);
+
+    Eigen::VectorXi termCounter;
+
+    termCounter.resize(0);
 
     tempDist(0) = 0;
 

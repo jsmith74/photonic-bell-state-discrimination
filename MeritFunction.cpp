@@ -74,6 +74,12 @@ double MeritFunction::f(Eigen::VectorXd& position){
 
     std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
 
+    std::ofstream outfile("timingTest.dat",std::ofstream::app);
+
+    outfile << std::setprecision(16) << t2 - t1 << std::endl;
+
+    outfile.close();
+
     assert( false );
 
     return LOCircuit.mutualEntropy;
