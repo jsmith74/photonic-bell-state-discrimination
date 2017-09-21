@@ -1,5 +1,11 @@
 #include "LinearOpticalTransform.h"
 
+#define ALLOC alloc_if(1)
+#define FREE free_if(1)
+#define RETAIN free_if(0)
+#define REUSE alloc_if(0)
+
+
 LinearOpticalTransform::LinearOpticalTransform(){
 
 
@@ -51,6 +57,13 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
 }
 
+__declspec(target(mic)) inline void complex_add(double& test){
+
+    test = 0.25;
+
+    return;
+
+}
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
@@ -58,10 +71,10 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     double parallelMutualEntropy = 0;
 
-    double totalPyx0 = 0;
-    double totalPyx1 = 0;
-    double totalPyx2 = 0;
-    double totalPyx3 = 0;
+    double totalPyx0;
+//    double totalPyx1 = 0;
+//    double totalPyx2 = 0;
+//    double totalPyx3 = 0;
 
     /** ===== NOTE ==============================================
 
@@ -70,88 +83,96 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
             (THE REDUCTION IS EXPENSIVE)
 
         ========================================================= */
+    std::cout << parallelGrid[0] << "\t" << parallelGrid[1] << std::endl;
 
-
-#pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
+#pragma offload target (mic) inout(totalPyx0) in( parallelGrid[0:2] :  REUSE RETAIN )
+#pragma omp parallel reduction(+:totalPyx0)
 {
 
     int threadID = omp_get_thread_num();
 
-    for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
+    totalPyx0 = parallelGrid[1];
 
-        std::complex<double> stateAmplitude[4];
-
-        stateAmplitude[0] = 0.0;
-        stateAmplitude[1] = 0.0;
-        stateAmplitude[2] = 0.0;
-        stateAmplitude[3] = 0.0;
-
-        do{
-
-            std::complex<double> UProdTemp(1.0,0.0);
-
-            for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
-
-            stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-
-            stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-
-            stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-
-            stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-
-        } while( std::next_permutation( &mPrime[ y * (2+ancillaPhotons) ], &mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
-
-        stateAmplitude[0] *= 0.7071067811865475;
-        stateAmplitude[1] *= 0.7071067811865475;
-        stateAmplitude[2] *= 0.7071067811865475;
-        stateAmplitude[3] *= 0.7071067811865475;
-
-        for(int p=0;p<ancillaModes+4;p++){
-
-            stateAmplitude[0] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-            stateAmplitude[1] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-            stateAmplitude[2] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-            stateAmplitude[3] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-
-        }
-
-        pyx[0] = std::norm( stateAmplitude[0] );
-        pyx[1] = std::norm( stateAmplitude[1] );
-        pyx[2] = std::norm( stateAmplitude[2] );
-        pyx[3] = std::norm( stateAmplitude[3] );
-
-        if(pyx[0] != 0.0) parallelMutualEntropy += pyx[0] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[0] );
-        if(pyx[1] != 0.0) parallelMutualEntropy += pyx[1] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[1] );
-        if(pyx[2] != 0.0) parallelMutualEntropy += pyx[2] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[2] );
-        if(pyx[3] != 0.0) parallelMutualEntropy += pyx[3] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[3] );
-
-        totalPyx0 += pyx[0];
-        totalPyx1 += pyx[1];
-        totalPyx2 += pyx[2];
-        totalPyx3 += pyx[3];
-
-    }
+//    for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
+//
+//        //std::complex<double> stateAmplitude[4];
+//        double stateAmplitude[8];
+//
+//        dev_totalPyx0 = threadID;
+//
+////        stateAmplitude[0] = 0.0;
+////        stateAmplitude[1] = 0.0;
+////        stateAmplitude[2] = 0.0;
+////        stateAmplitude[3] = 0.0;
+////
+////        do{
+////
+////            std::complex<double> UProdTemp(1.0,0.0);
+////
+////            for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
+////
+////            stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+////                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+////
+////            stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+////                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+////
+////            stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+////                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+////
+////            stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+////                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+////
+////        } while( std::next_permutation( &mPrime[ y * (2+ancillaPhotons) ], &mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
+////
+////        stateAmplitude[0] *= 0.7071067811865475;
+////        stateAmplitude[1] *= 0.7071067811865475;
+////        stateAmplitude[2] *= 0.7071067811865475;
+////        stateAmplitude[3] *= 0.7071067811865475;
+////
+////        for(int p=0;p<ancillaModes+4;p++){
+////
+////            stateAmplitude[0] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+////            stateAmplitude[1] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+////            stateAmplitude[2] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+////            stateAmplitude[3] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
+////
+////        }
+////
+////        pyx[0] = std::norm( stateAmplitude[0] );
+////        pyx[1] = std::norm( stateAmplitude[1] );
+////        pyx[2] = std::norm( stateAmplitude[2] );
+////        pyx[3] = std::norm( stateAmplitude[3] );
+////
+////        if(pyx[0] != 0.0) parallelMutualEntropy += pyx[0] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[0] );
+////        if(pyx[1] != 0.0) parallelMutualEntropy += pyx[1] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[1] );
+////        if(pyx[2] != 0.0) parallelMutualEntropy += pyx[2] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[2] );
+////        if(pyx[3] != 0.0) parallelMutualEntropy += pyx[3] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[3] );
+////
+////        totalPyx0 += pyx[0];
+////        totalPyx1 += pyx[1];
+////        totalPyx2 += pyx[2];
+////        totalPyx3 += pyx[3];
+////
+//    }
 
 }
 
-    totalPyx0 = 1 - totalPyx0;
-    totalPyx1 = 1 - totalPyx1;
-    totalPyx2 = 1 - totalPyx2;
-    totalPyx3 = 1 - totalPyx3;
+    std::cout << "TEST: " << totalPyx0 << std::endl;
 
-    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
-
-    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
-    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
-    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
-    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
-
-    mutualEntropy = parallelMutualEntropy;
+//    totalPyx0 = 1 - totalPyx0;
+//    totalPyx1 = 1 - totalPyx1;
+//    totalPyx2 = 1 - totalPyx2;
+//    totalPyx3 = 1 - totalPyx3;
+//
+//    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
+//
+//    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
+//    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
+//    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
+//    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
+//
+//    mutualEntropy = parallelMutualEntropy;
 
     return;
 
@@ -323,7 +344,11 @@ void LinearOpticalTransform::setMPrime( int* __nBegin, int* __mBegin ){
 
 void LinearOpticalTransform::checkThreadsAndProcs(){
 
+     num_coprocessors = _Offload_number_of_devices();
 
+    std::cout << "Number of coprocessors: " << num_coprocessors << std::endl;
+
+#pragma offload target (mic)
 #pragma omp parallel
 {
 
@@ -437,9 +462,13 @@ void LinearOpticalTransform::setParallelGrid(){
 
     assert( tempDist( tempDist.size() -1 ) == HSDimension );
 
-    parallelGrid.resize( tempDist.size() );
+    pGridSize = numProcs + 1;
 
-    for(int i=0;i<parallelGrid.size();i++) parallelGrid[i] = tempDist(i);
+    parallelGrid =  (int*)malloc( pGridSize * sizeof(int) ); //new int[ tempDist.size() ];
+
+    assert( tempDist.size() == numProcs + 1 );
+
+    for(int i=0;i<tempDist.size();i++) parallelGrid[i] = tempDist(i);
 
     std::ofstream outfile( "distributionCheck.dat" );
 
@@ -448,6 +477,17 @@ void LinearOpticalTransform::setParallelGrid(){
     outfile.close();
 
     assert( termCounter.sum() == k );
+
+    std::cout << "Sending parallel grid..." << std::endl;
+
+    // NOTE: THE PARAMETERS OF ARRAYS ARE INPUT AS [FIRST:LENGTH]
+
+#pragma offload target(mic) in( parallelGrid[0:2] : ALLOC RETAIN )
+{
+
+    1+1;
+
+}
 
     return;
 

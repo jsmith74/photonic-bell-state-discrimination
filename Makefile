@@ -1,8 +1,8 @@
-CC = g++
-CFLAGS = -Ofast -funroll-loops -c
-LFLAGS = -Ofast -funroll-loops
+CC = icpc
+CFLAGS = -O3 -funroll-loops -c
+LFLAGS = -O3 -funroll-loops
 OBJS = main.o LinearOpticalTransform.o MeritFunction.o BFGS_Optimization.o
-OMPFLAGS = -fopenmp
+OMPFLAGS = -openmp
 
 all: LinearOpticalSimulation
 
@@ -22,4 +22,4 @@ BFGS_Optimization.o: BFGS_Optimization.cpp
 	$(CC) $(CFLAGS) BFGS_Optimization.cpp
 
 clean:
-	rm *.o LinearOpticalSimulation *.dat
+	rm *.o LinearOpticalSimulation *.dat *.out

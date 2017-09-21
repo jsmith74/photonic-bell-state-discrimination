@@ -21,9 +21,9 @@ class LinearOpticalTransform{
 
     private:
 
-        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs;
+        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs, num_coprocessors, pGridSize;
         std::vector<double> factorial;
-        std::vector<int> parallelGrid;
+        int* parallelGrid;
         int* nPrime;
         int* mPrime;
 

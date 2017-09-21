@@ -70,9 +70,9 @@ double MeritFunction::f(Eigen::VectorXd& position){
 
     if( svd2.singularValues()(0) > 1 ) U /= svd2.singularValues()(0);
 
-    LOCircuit.setMutualEntropy(U);
+    //LOCircuit.setMutualEntropy(U);
 
-    std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+    //std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
 
     std::ofstream outfile("timingTest.dat",std::ofstream::app);
 
