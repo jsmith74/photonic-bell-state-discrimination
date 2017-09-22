@@ -13,7 +13,7 @@ module load intel/mic/runtime/3.3
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MIC_ENV_PREFIX=MIC
-export MIC_OMP_NUM_THREADS=2
+export MIC_OMP_NUM_THREADS=120
 export MIC_KMP_AFFINITY=scatter
 
 ./LinearOpticalSimulation

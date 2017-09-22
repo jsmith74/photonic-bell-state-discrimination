@@ -23,9 +23,6 @@ class LinearOpticalTransform{
 
         int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs, num_coprocessors, pGridSize;
         std::vector<double> factorial;
-        int* parallelGrid;
-        int* nPrime;
-        int* mPrime;
 
         int g(const int& n,const int& m);
         double doublefactorial(int x);

@@ -5,6 +5,20 @@
 #define RETAIN free_if(0)
 #define REUSE alloc_if(0)
 
+/** == TOGGLE DELETING MEMORY ON CPU =========== */
+
+#define DELETE_CPU_ARRAYS
+#define ANCILLA_PHOTONS 6
+#define ANCILLA_MODES 8
+
+/** ============================================ */
+
+__declspec(target(mic)) bool dev_next_permutation(int* __first, int* __last);
+
+__declspec(target(mic)) int* dev_parallelGrid;
+__declspec(target(mic)) int* dev_nPrime;
+__declspec(target(mic)) int* dev_mPrime;
+
 
 LinearOpticalTransform::LinearOpticalTransform(){
 
@@ -30,8 +44,8 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     setParallelGrid();
 
-    nPrime = new int[ HSDimension * (4 + ancillaModes) ];
-    mPrime = new int[ HSDimension * (2 + ancillaPhotons) ];
+    dev_nPrime = new int[ HSDimension * (4 + ancillaModes) ];
+    dev_mPrime = new int[ HSDimension * (2 + ancillaPhotons) ];
 
     std::vector< std::vector<int> > nPrimeTemp,mPrimeTemp;
 
@@ -44,14 +58,28 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
     for(int y=0;y<HSDimension;y++){
 
-        for(int i=0;i<4+ancillaModes;i++) nPrime[ y*(4+ancillaModes) + i ] = nPrimeTemp[y][i];
+        for(int i=0;i<4+ancillaModes;i++) dev_nPrime[ y*(4+ancillaModes) + i ] = nPrimeTemp[y][i];
 
-        for(int i=0;i<2+ancillaPhotons;i++) mPrime[ y*(2+ancillaPhotons) + i ] = mPrimeTemp[y][i];
+        for(int i=0;i<2+ancillaPhotons;i++) dev_mPrime[ y*(2+ancillaPhotons) + i ] = mPrimeTemp[y][i];
 
     }
 
     nPrimeTemp.resize(0);
     mPrimeTemp.resize(0);
+
+#pragma offload target(mic) in(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : ALLOC RETAIN ) \
+                            in(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : ALLOC RETAIN )
+#pragma omp parallel
+{
+
+}
+
+    #ifdef DELETE_CPU_ARRAYS
+
+        delete[] dev_nPrime;
+        delete[] dev_mPrime;
+
+    #endif
 
     return;
 
@@ -60,6 +88,66 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 __declspec(target(mic)) inline void complex_add(double& test){
 
     test = 0.25;
+
+    return;
+
+}
+
+__declspec(target(mic)) inline double Uel(double* U,int& row,int& col,bool imagPart){
+
+    return *( U + 2 * row + 2 * col * (4+ANCILLA_MODES) + imagPart );
+
+}
+
+__declspec(target(mic)) inline double* UelPtr(double* U,int row,int col){
+
+    return ( U + 2 * row + 2 * col * (4+ANCILLA_MODES) );
+
+}
+
+__declspec(target(mic)) inline void complex_prod(double* result,double* c1,double* c2){
+
+    result[0] = c1[0] * c2[0] - c1[1] * c2[1];
+    result[1] = c1[1] * c2[0] + c1[0] * c2[1];
+
+    return;
+
+}
+
+__declspec(target(mic)) inline void complex_sum(double* result,double* c1,double* c2){
+
+    result[0] = c1[0] + c2[0];
+    result[1] = c1[1] + c2[1];
+
+    return;
+
+}
+
+__declspec(target(mic)) inline void complex_sum_compound(double* result,double* c1){
+
+    result[0] += c1[0];
+    result[1] += c1[1];
+
+    return;
+
+}
+
+__declspec(target(mic)) inline void complex_prod_compound(double* result,double* c1){
+
+    double temp = result[0];
+
+    result[0] = result[0] * c1[0] - result[1] * c1[1];
+    result[1] = result[1] * c1[0] + temp * c1[1];
+
+    return;
+
+}
+
+__declspec(target(mic)) inline void complex_special_op_plus(double* result,double* c1,double* c2,double* c3,double* c4,double* cProd){
+
+    /** UP TO HERE - WRITE IN THIS FUNCTION ===*/
+
+    result[0] +=
 
     return;
 
@@ -83,47 +171,63 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
             (THE REDUCTION IS EXPENSIVE)
 
         ========================================================= */
-    std::cout << parallelGrid[0] << "\t" << parallelGrid[1] << std::endl;
 
-#pragma offload target (mic) inout(totalPyx0) in( parallelGrid[0:2] :  REUSE RETAIN )
+    double* dev_U = (double*)U.data();
+
+#pragma offload target (mic) \
+                    inout(totalPyx0) \
+                    in(dev_U[0:2*(4+ancillaModes)*(4+ancillaModes)] :  ALLOC FREE ) \
+                    nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
+                    nocopy(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : REUSE RETAIN ) \
+                    nocopy(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : REUSE RETAIN )
 #pragma omp parallel reduction(+:totalPyx0)
 {
 
     int threadID = omp_get_thread_num();
 
-    totalPyx0 = parallelGrid[1];
+    totalPyx0 = 0;
 
-//    for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
-//
-//        //std::complex<double> stateAmplitude[4];
-//        double stateAmplitude[8];
-//
-//        dev_totalPyx0 = threadID;
-//
-////        stateAmplitude[0] = 0.0;
-////        stateAmplitude[1] = 0.0;
-////        stateAmplitude[2] = 0.0;
-////        stateAmplitude[3] = 0.0;
-////
-////        do{
-////
-////            std::complex<double> UProdTemp(1.0,0.0);
-////
-////            for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
-////
-////            stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-////                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-////
-////            stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-////                                    + U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-////
-////            stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-////                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-////
-////            stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-////                                    - U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
-////
-////        } while( std::next_permutation( &mPrime[ y * (2+ancillaPhotons) ], &mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
+    for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
+
+//        std::complex<double> stateAmplitude[4];
+        double stateAmplitude[8];
+
+        stateAmplitude[0] = 0.0;
+        stateAmplitude[1] = 0.0;
+        stateAmplitude[2] = 0.0;
+        stateAmplitude[3] = 0.0;
+        stateAmplitude[4] = 0.0;
+        stateAmplitude[5] = 0.0;
+        stateAmplitude[6] = 0.0;
+        stateAmplitude[7] = 0.0;
+
+        do{
+
+            //std::complex<double> UProdTemp(1.0,0.0);
+            double UProdTemp[2];
+            UProdTemp[0] = 1.0;
+            UProdTemp[1] = 0.0;
+
+            //for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
+            for(int i=0;i<ANCILLA_PHOTONS;i++) complex_prod_compound( UProdTemp, UelPtr(dev_U,i,dev_mPrime[y * (2+ANCILLA_PHOTONS) + i]) );
+
+            complex_special_op_plus(&stateAmplitude[0],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
+            //stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    //+ U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
+            //stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    //+ U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            //stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    //- U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+            //stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
+                                    //- U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+
+        } while( dev_next_permutation( &dev_mPrime[ y * (2+ancillaPhotons) ], &dev_mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
 ////
 ////        stateAmplitude[0] *= 0.7071067811865475;
 ////        stateAmplitude[1] *= 0.7071067811865475;
@@ -154,7 +258,7 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 ////        totalPyx2 += pyx[2];
 ////        totalPyx3 += pyx[3];
 ////
-//    }
+    }
 
 }
 
@@ -348,7 +452,7 @@ void LinearOpticalTransform::checkThreadsAndProcs(){
 
     std::cout << "Number of coprocessors: " << num_coprocessors << std::endl;
 
-#pragma offload target (mic)
+#pragma offload target (mic) inout(numProcs)
 #pragma omp parallel
 {
 
@@ -362,13 +466,12 @@ void LinearOpticalTransform::checkThreadsAndProcs(){
 
     outfile << numProcs << "\t";
 
-
-
     outfile.close();
 
     return;
 
 }
+
 
 
 void LinearOpticalTransform::setParallelGrid(){
@@ -464,11 +567,23 @@ void LinearOpticalTransform::setParallelGrid(){
 
     pGridSize = numProcs + 1;
 
-    parallelGrid =  (int*)malloc( pGridSize * sizeof(int) ); //new int[ tempDist.size() ];
+    dev_parallelGrid = new int[pGridSize];
 
-    assert( tempDist.size() == numProcs + 1 );
+    assert( tempDist.size() == pGridSize );
 
-    for(int i=0;i<tempDist.size();i++) parallelGrid[i] = tempDist(i);
+    for(int i=0;i<tempDist.size();i++) dev_parallelGrid[i] = tempDist(i);
+
+#pragma offload target(mic) in(dev_parallelGrid[0:pGridSize] : ALLOC RETAIN )
+#pragma omp parallel
+{
+
+}
+
+    #ifdef DELETE_CPU_ARRAYS
+
+        delete[] dev_parallelGrid;
+
+    #endif
 
     std::ofstream outfile( "distributionCheck.dat" );
 
@@ -478,17 +593,53 @@ void LinearOpticalTransform::setParallelGrid(){
 
     assert( termCounter.sum() == k );
 
-    std::cout << "Sending parallel grid..." << std::endl;
-
-    // NOTE: THE PARAMETERS OF ARRAYS ARE INPUT AS [FIRST:LENGTH]
-
-#pragma offload target(mic) in( parallelGrid[0:2] : ALLOC RETAIN )
-{
-
-    1+1;
+    return;
 
 }
 
-    return;
+__declspec(target(mic)) inline void iter_swap(int* __a, int* __b) {
+  int __tmp = *__a;
+  *__a = *__b;
+  *__b = __tmp;
+}
+
+
+__declspec(target(mic)) void reverse(int* __first, int* __last) {
+
+  while (true)
+    if (__first == __last || __first == --__last)
+      return;
+    else{
+      iter_swap(__first++, __last);
+    }
+}
+
+__declspec(target(mic)) bool dev_next_permutation(int* __first, int* __last) {
+
+  if (__first == __last)
+    return false;
+  int* __i = __first;
+  ++__i;
+  if (__i == __last)
+    return false;
+  __i = __last;
+  --__i;
+
+  for(;;) {
+    int* __ii = __i;
+    --__i;
+    if (*__i < *__ii) {
+      int* __j = __last;
+      while (!(*__i < *--__j))
+        {}
+    iter_swap(__i, __j);
+      reverse(__ii, __last);
+      return true;
+    }
+    if (__i == __first) {
+      reverse(__first, __last);
+      return false;
+    }
+  }
 
 }
