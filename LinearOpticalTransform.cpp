@@ -86,6 +86,7 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
         delete[] dev_nPrime;
         delete[] dev_mPrime;
+        delete[] dev_factorial;
 
     #endif
 
@@ -203,7 +204,7 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
     double* dev_U = (double*)U.data();
 
 #pragma offload target (mic) \
-                    inout(parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3) \
+                    out(parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3) \
                     in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
                     nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
                     nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
@@ -256,32 +257,14 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         } while( dev_next_permutation( &dev_mPrime[ y * (2+ANCILLA_PHOTONS) ], &dev_mPrime[ (y+1) * (2+ANCILLA_PHOTONS) ] ) );
 
-        stateAmplitude[0] *= 0.7071067811865475;
-        stateAmplitude[1] *= 0.7071067811865475;
-        stateAmplitude[2] *= 0.7071067811865475;
-        stateAmplitude[3] *= 0.7071067811865475;
-        stateAmplitude[4] *= 0.7071067811865475;
-        stateAmplitude[5] *= 0.7071067811865475;
-        stateAmplitude[6] *= 0.7071067811865475;
-        stateAmplitude[7] *= 0.7071067811865475;
+        double bosonStat = 1;
 
-        for(int p=0;p<ANCILLA_MODES+4;p++){
+        for(int p=0;p<ANCILLA_MODES+4;p++) bosonStat *= dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ];
 
-            stateAmplitude[0] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[1] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[2] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[3] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[4] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[5] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[6] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-            stateAmplitude[7] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
-
-        }
-
-        stateAmplitude[0] = stateAmplitude[0] * stateAmplitude[0] + stateAmplitude[1] * stateAmplitude[1];
-        stateAmplitude[1] = stateAmplitude[2] * stateAmplitude[2] + stateAmplitude[3] * stateAmplitude[3];
-        stateAmplitude[2] = stateAmplitude[4] * stateAmplitude[4] + stateAmplitude[5] * stateAmplitude[5];
-        stateAmplitude[3] = stateAmplitude[6] * stateAmplitude[6] + stateAmplitude[7] * stateAmplitude[7];
+        stateAmplitude[0] = bosonStat * 0.5 * (stateAmplitude[0] * stateAmplitude[0] + stateAmplitude[1] * stateAmplitude[1]);
+        stateAmplitude[1] = bosonStat * 0.5 * (stateAmplitude[2] * stateAmplitude[2] + stateAmplitude[3] * stateAmplitude[3]);
+        stateAmplitude[2] = bosonStat * 0.5 * (stateAmplitude[4] * stateAmplitude[4] + stateAmplitude[5] * stateAmplitude[5]);
+        stateAmplitude[3] = bosonStat * 0.5 * (stateAmplitude[6] * stateAmplitude[6] + stateAmplitude[7] * stateAmplitude[7]);
 
         if(stateAmplitude[0] != 0.0) parallelMutualEntropy += stateAmplitude[0] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[0] );
         if(stateAmplitude[1] != 0.0) parallelMutualEntropy += stateAmplitude[1] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[1] );
@@ -481,9 +464,9 @@ void LinearOpticalTransform::setMPrime( int* __nBegin, int* __mBegin ){
 
 void LinearOpticalTransform::checkThreadsAndProcs(){
 
-     num_coprocessors = _Offload_number_of_devices();
+    num_coprocessors = _Offload_number_of_devices();
 
-    std::cout << "Number of coprocessors: " << num_coprocessors << std::endl;
+    //std::cout << "Number of coprocessors: " << num_coprocessors << std::endl;
 
 #pragma offload target (mic) inout(numProcs)
 #pragma omp parallel
