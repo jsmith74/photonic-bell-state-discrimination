@@ -18,6 +18,7 @@ __declspec(target(mic)) bool dev_next_permutation(int* __first, int* __last);
 __declspec(target(mic)) int* dev_parallelGrid;
 __declspec(target(mic)) int* dev_nPrime;
 __declspec(target(mic)) int* dev_mPrime;
+__declspec(target(mic)) int* dev_factorial;
 
 
 LinearOpticalTransform::LinearOpticalTransform(){
@@ -37,6 +38,12 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
     factorial.resize( ancillaPhotons + 2 + 1 );
 
     for(int i=0;i<factorial.size();i++) factorial[i] = doublefactorial(i);
+
+    dev_factorial = new int[ ancillaPhotons + 2 + 1 ];
+
+    for(int i=0;i<factorial.size();i++) dev_factorial[i] = factorial[i];
+
+    factorial.resize(0);
 
     assert( ancillaModes >= ancillaPhotons );
 
@@ -68,7 +75,8 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
     mPrimeTemp.resize(0);
 
 #pragma offload target(mic) in(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : ALLOC RETAIN ) \
-                            in(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : ALLOC RETAIN )
+                            in(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : ALLOC RETAIN ) \
+                            in(dev_factorial[0:ancillaPhotons + 2 + 1] : ALLOC RETAIN )
 #pragma omp parallel
 {
 
@@ -145,9 +153,31 @@ __declspec(target(mic)) inline void complex_prod_compound(double* result,double*
 
 __declspec(target(mic)) inline void complex_special_op_plus(double* result,double* c1,double* c2,double* c3,double* c4,double* cProd){
 
-    /** UP TO HERE - WRITE IN THIS FUNCTION ===*/
+    double temp[2];
 
-    result[0] +=
+    temp[0] = c1[0] * c2[0] - c1[1] * c2[1] + c3[0] * c4[0] - c3[1] * c4[1];
+
+    temp[1] = c1[0] * c2[1] + c2[0] * c1[1] + c4[0] * c3[1] + c3[0] * c4[1];
+
+    result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
+
+    result[1] += cProd[1] * temp[0] + cProd[0] * temp[1];
+
+    return;
+
+}
+
+__declspec(target(mic)) inline void complex_special_op_minus(double* result,double* c1,double* c2,double* c3,double* c4,double* cProd){
+
+    double temp[2];
+
+    temp[0] = c1[0] * c2[0] - c1[1] * c2[1] - c3[0] * c4[0] + c3[1] * c4[1];
+
+    temp[1] = c1[0] * c2[1] + c2[0] * c1[1] - c4[0] * c3[1] - c3[0] * c4[1];
+
+    result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
+
+    result[1] += cProd[1] * temp[0] + cProd[0] * temp[1];
 
     return;
 
@@ -155,14 +185,12 @@ __declspec(target(mic)) inline void complex_special_op_plus(double* result,doubl
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
-    double pyx[4];
-
-    double parallelMutualEntropy = 0;
+    double parallelMutualEntropy;
 
     double totalPyx0;
-//    double totalPyx1 = 0;
-//    double totalPyx2 = 0;
-//    double totalPyx3 = 0;
+    double totalPyx1;
+    double totalPyx2;
+    double totalPyx3;
 
     /** ===== NOTE ==============================================
 
@@ -175,21 +203,26 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
     double* dev_U = (double*)U.data();
 
 #pragma offload target (mic) \
-                    inout(totalPyx0) \
-                    in(dev_U[0:2*(4+ancillaModes)*(4+ancillaModes)] :  ALLOC FREE ) \
+                    inout(parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3) \
+                    in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
                     nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
-                    nocopy(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : REUSE RETAIN ) \
-                    nocopy(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : REUSE RETAIN )
-#pragma omp parallel reduction(+:totalPyx0)
+                    nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
+                    nocopy(dev_mPrime[0:HSDimension * (2 + ANCILLA_PHOTONS)] : REUSE RETAIN ) \
+                    nocopy(dev_factorial[0:ANCILLA_PHOTONS + 2 + 1] : REUSE RETAIN )
+#pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
 {
 
     int threadID = omp_get_thread_num();
 
+    parallelMutualEntropy = 0;
+
     totalPyx0 = 0;
+    totalPyx1 = 0;
+    totalPyx2 = 0;
+    totalPyx3 = 0;
 
     for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
 
-//        std::complex<double> stateAmplitude[4];
         double stateAmplitude[8];
 
         stateAmplitude[0] = 0.0;
@@ -203,80 +236,80 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
         do{
 
-            //std::complex<double> UProdTemp(1.0,0.0);
             double UProdTemp[2];
             UProdTemp[0] = 1.0;
             UProdTemp[1] = 0.0;
 
-            //for(int i=0;i<ancillaPhotons;i++) UProdTemp *= U( i,mPrime[y * (2+ancillaPhotons) + i] );
             for(int i=0;i<ANCILLA_PHOTONS;i++) complex_prod_compound( UProdTemp, UelPtr(dev_U,i,dev_mPrime[y * (2+ANCILLA_PHOTONS) + i]) );
 
             complex_special_op_plus(&stateAmplitude[0],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                 UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
-            //stateAmplitude[0] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    //+ U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
 
             complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
-            //stateAmplitude[1] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    //+ U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
 
-            //stateAmplitude[2] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    //- U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),UProdTemp);
 
-            //stateAmplitude[3] += UProdTemp * ( U(ancillaModes,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes+3,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1])
-                                    //- U(ancillaModes + 1,mPrime[y * (2+ancillaPhotons) + ancillaPhotons]) * U(ancillaModes + 2,mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]) );
+            complex_special_op_minus(&stateAmplitude[6],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
-        } while( dev_next_permutation( &dev_mPrime[ y * (2+ancillaPhotons) ], &dev_mPrime[ (y+1) * (2+ancillaPhotons) ] ) );
-////
-////        stateAmplitude[0] *= 0.7071067811865475;
-////        stateAmplitude[1] *= 0.7071067811865475;
-////        stateAmplitude[2] *= 0.7071067811865475;
-////        stateAmplitude[3] *= 0.7071067811865475;
-////
-////        for(int p=0;p<ancillaModes+4;p++){
-////
-////            stateAmplitude[0] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-////            stateAmplitude[1] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-////            stateAmplitude[2] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-////            stateAmplitude[3] *= sqrt( factorial[ nPrime[y * (4 + ancillaModes) + p] ] );
-////
-////        }
-////
-////        pyx[0] = std::norm( stateAmplitude[0] );
-////        pyx[1] = std::norm( stateAmplitude[1] );
-////        pyx[2] = std::norm( stateAmplitude[2] );
-////        pyx[3] = std::norm( stateAmplitude[3] );
-////
-////        if(pyx[0] != 0.0) parallelMutualEntropy += pyx[0] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[0] );
-////        if(pyx[1] != 0.0) parallelMutualEntropy += pyx[1] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[1] );
-////        if(pyx[2] != 0.0) parallelMutualEntropy += pyx[2] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[2] );
-////        if(pyx[3] != 0.0) parallelMutualEntropy += pyx[3] * log2( ( pyx[0] + pyx[1] + pyx[2] + pyx[3] ) / pyx[3] );
-////
-////        totalPyx0 += pyx[0];
-////        totalPyx1 += pyx[1];
-////        totalPyx2 += pyx[2];
-////        totalPyx3 += pyx[3];
-////
+        } while( dev_next_permutation( &dev_mPrime[ y * (2+ANCILLA_PHOTONS) ], &dev_mPrime[ (y+1) * (2+ANCILLA_PHOTONS) ] ) );
+
+        stateAmplitude[0] *= 0.7071067811865475;
+        stateAmplitude[1] *= 0.7071067811865475;
+        stateAmplitude[2] *= 0.7071067811865475;
+        stateAmplitude[3] *= 0.7071067811865475;
+        stateAmplitude[4] *= 0.7071067811865475;
+        stateAmplitude[5] *= 0.7071067811865475;
+        stateAmplitude[6] *= 0.7071067811865475;
+        stateAmplitude[7] *= 0.7071067811865475;
+
+        for(int p=0;p<ANCILLA_MODES+4;p++){
+
+            stateAmplitude[0] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[1] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[2] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[3] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[4] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[5] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[6] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+            stateAmplitude[7] *= sqrt( dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ] );
+
+        }
+
+        stateAmplitude[0] = stateAmplitude[0] * stateAmplitude[0] + stateAmplitude[1] * stateAmplitude[1];
+        stateAmplitude[1] = stateAmplitude[2] * stateAmplitude[2] + stateAmplitude[3] * stateAmplitude[3];
+        stateAmplitude[2] = stateAmplitude[4] * stateAmplitude[4] + stateAmplitude[5] * stateAmplitude[5];
+        stateAmplitude[3] = stateAmplitude[6] * stateAmplitude[6] + stateAmplitude[7] * stateAmplitude[7];
+
+        if(stateAmplitude[0] != 0.0) parallelMutualEntropy += stateAmplitude[0] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[0] );
+        if(stateAmplitude[1] != 0.0) parallelMutualEntropy += stateAmplitude[1] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[1] );
+        if(stateAmplitude[2] != 0.0) parallelMutualEntropy += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
+        if(stateAmplitude[3] != 0.0) parallelMutualEntropy += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
+
+        totalPyx0 += stateAmplitude[0];
+        totalPyx1 += stateAmplitude[1];
+        totalPyx2 += stateAmplitude[2];
+        totalPyx3 += stateAmplitude[3];
+
     }
 
 }
 
-    std::cout << "TEST: " << totalPyx0 << std::endl;
+    totalPyx0 = 1 - totalPyx0;
+    totalPyx1 = 1 - totalPyx1;
+    totalPyx2 = 1 - totalPyx2;
+    totalPyx3 = 1 - totalPyx3;
 
-//    totalPyx0 = 1 - totalPyx0;
-//    totalPyx1 = 1 - totalPyx1;
-//    totalPyx2 = 1 - totalPyx2;
-//    totalPyx3 = 1 - totalPyx3;
-//
-//    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
-//
-//    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
-//    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
-//    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
-//    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
-//
-//    mutualEntropy = parallelMutualEntropy;
+    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
+
+    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
+    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
+    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
+    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
+
+    mutualEntropy = parallelMutualEntropy;
 
     return;
 

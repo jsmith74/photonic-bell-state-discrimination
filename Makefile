@@ -2,7 +2,7 @@ CC = icpc
 CFLAGS = -O3 -funroll-loops -c
 LFLAGS = -O3 -funroll-loops
 OBJS = main.o LinearOpticalTransform.o MeritFunction.o BFGS_Optimization.o
-OMPFLAGS = -openmp
+OMPFLAGS = -fopenmp
 
 all: LinearOpticalSimulation
 
