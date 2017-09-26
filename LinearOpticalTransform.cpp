@@ -74,13 +74,22 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
     nPrimeTemp.resize(0);
     mPrimeTemp.resize(0);
 
-#pragma offload target(mic) in(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : ALLOC RETAIN ) \
+#pragma offload target(mic:0) in(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : ALLOC RETAIN ) \
                             in(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : ALLOC RETAIN ) \
                             in(dev_factorial[0:ancillaPhotons + 2 + 1] : ALLOC RETAIN )
 #pragma omp parallel
 {
 
 }
+
+#pragma offload target(mic:1) in(dev_nPrime[0:HSDimension * (4 + ancillaModes)] : ALLOC RETAIN ) \
+                            in(dev_mPrime[0:HSDimension * (2 + ancillaPhotons)] : ALLOC RETAIN ) \
+                            in(dev_factorial[0:ancillaPhotons + 2 + 1] : ALLOC RETAIN )
+#pragma omp parallel
+{
+
+}
+
 
     #ifdef DELETE_CPU_ARRAYS
 
@@ -194,12 +203,12 @@ __declspec(target(mic)) inline void complex_special_op_minus(double* result,doub
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
-    double parallelMutualEntropy;
+    double parallelMutualEntropyMic0;
 
-    double totalPyx0;
-    double totalPyx1;
-    double totalPyx2;
-    double totalPyx3;
+    double totalPyx0mic0;
+    double totalPyx1mic0;
+    double totalPyx2mic0;
+    double totalPyx3mic0;
 
     /** ===== NOTE ==============================================
 
@@ -211,24 +220,26 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     double* dev_U = (double*)U.data();
 
-#pragma offload target (mic) \
-                    out(parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3) \
+    char signal_var0, signal_var1;
+
+#pragma offload signal(&signal_var0) target (mic:0) \
+                    out(parallelMutualEntropyMic0,totalPyx0mic0,totalPyx1mic0,totalPyx2mic0,totalPyx3mic0) \
                     in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
                     nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
                     nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
                     nocopy(dev_mPrime[0:HSDimension * (2 + ANCILLA_PHOTONS)] : REUSE RETAIN ) \
                     nocopy(dev_factorial[0:ANCILLA_PHOTONS + 2 + 1] : REUSE RETAIN )
-#pragma omp parallel reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
+#pragma omp parallel reduction(+:parallelMutualEntropyMic0,totalPyx0mic0,totalPyx1mic0,totalPyx2mic0,totalPyx3mic0)
 {
 
     int threadID = omp_get_thread_num();
 
-    parallelMutualEntropy = 0;
+    parallelMutualEntropyMic0 = 0;
 
-    totalPyx0 = 0;
-    totalPyx1 = 0;
-    totalPyx2 = 0;
-    totalPyx3 = 0;
+    totalPyx0mic0 = 0;
+    totalPyx1mic0 = 0;
+    totalPyx2mic0 = 0;
+    totalPyx3mic0 = 0;
 
     for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
 
@@ -274,33 +285,129 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
         stateAmplitude[2] = bosonStat * 0.5 * (stateAmplitude[4] * stateAmplitude[4] + stateAmplitude[5] * stateAmplitude[5]);
         stateAmplitude[3] = bosonStat * 0.5 * (stateAmplitude[6] * stateAmplitude[6] + stateAmplitude[7] * stateAmplitude[7]);
 
-        if(stateAmplitude[0] != 0.0) parallelMutualEntropy += stateAmplitude[0] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[0] );
-        if(stateAmplitude[1] != 0.0) parallelMutualEntropy += stateAmplitude[1] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[1] );
-        if(stateAmplitude[2] != 0.0) parallelMutualEntropy += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
-        if(stateAmplitude[3] != 0.0) parallelMutualEntropy += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
+        if(stateAmplitude[0] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[0] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[0] );
+        if(stateAmplitude[1] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[1] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[1] );
+        if(stateAmplitude[2] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
+        if(stateAmplitude[3] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
 
-        totalPyx0 += stateAmplitude[0];
-        totalPyx1 += stateAmplitude[1];
-        totalPyx2 += stateAmplitude[2];
-        totalPyx3 += stateAmplitude[3];
+        totalPyx0mic0 += stateAmplitude[0];
+        totalPyx1mic0 += stateAmplitude[1];
+        totalPyx2mic0 += stateAmplitude[2];
+        totalPyx3mic0 += stateAmplitude[3];
 
     }
 
 }
 
-    totalPyx0 = 1 - totalPyx0;
-    totalPyx1 = 1 - totalPyx1;
-    totalPyx2 = 1 - totalPyx2;
-    totalPyx3 = 1 - totalPyx3;
+    double parallelMutualEntropyMic1;
 
-    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
+    double totalPyx0mic1;
+    double totalPyx1mic1;
+    double totalPyx2mic1;
+    double totalPyx3mic1;
 
-    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
-    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
-    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
-    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
+#pragma offload signal(&signal_var1) target (mic:1) \
+                    out(parallelMutualEntropyMic1,totalPyx0mic1,totalPyx1mic1,totalPyx2mic1,totalPyx3mic1) \
+                    in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
+                    nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
+                    nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
+                    nocopy(dev_mPrime[0:HSDimension * (2 + ANCILLA_PHOTONS)] : REUSE RETAIN ) \
+                    nocopy(dev_factorial[0:ANCILLA_PHOTONS + 2 + 1] : REUSE RETAIN )
+#pragma omp parallel reduction(+:parallelMutualEntropyMic1,totalPyx0mic1,totalPyx1mic1,totalPyx2mic1,totalPyx3mic1)
+{
 
-    mutualEntropy = parallelMutualEntropy;
+    int threadID = omp_get_thread_num() + omp_get_num_threads();
+
+    parallelMutualEntropyMic1 = 0;
+
+    totalPyx0mic1 = 0;
+    totalPyx1mic1 = 0;
+    totalPyx2mic1 = 0;
+    totalPyx3mic1 = 0;
+
+    for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
+
+        double stateAmplitude[8];
+
+        stateAmplitude[0] = 0.0;
+        stateAmplitude[1] = 0.0;
+        stateAmplitude[2] = 0.0;
+        stateAmplitude[3] = 0.0;
+        stateAmplitude[4] = 0.0;
+        stateAmplitude[5] = 0.0;
+        stateAmplitude[6] = 0.0;
+        stateAmplitude[7] = 0.0;
+
+        do{
+
+            double UProdTemp[2];
+            UProdTemp[0] = 1.0;
+            UProdTemp[1] = 0.0;
+
+            for(int i=0;i<ANCILLA_PHOTONS;i++) complex_prod_compound( UProdTemp, UelPtr(dev_U,i,dev_mPrime[y * (2+ANCILLA_PHOTONS) + i]) );
+
+            complex_special_op_plus(&stateAmplitude[0],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
+
+            complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
+
+            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),UProdTemp);
+
+            complex_special_op_minus(&stateAmplitude[6],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
+
+        } while( dev_next_permutation( &dev_mPrime[ y * (2+ANCILLA_PHOTONS) ], &dev_mPrime[ (y+1) * (2+ANCILLA_PHOTONS) ] ) );
+
+        double bosonStat = 1;
+
+        for(int p=0;p<ANCILLA_MODES+4;p++) bosonStat *= dev_factorial[ dev_nPrime[y * (4 + ANCILLA_MODES) + p] ];
+
+        stateAmplitude[0] = bosonStat * 0.5 * (stateAmplitude[0] * stateAmplitude[0] + stateAmplitude[1] * stateAmplitude[1]);
+        stateAmplitude[1] = bosonStat * 0.5 * (stateAmplitude[2] * stateAmplitude[2] + stateAmplitude[3] * stateAmplitude[3]);
+        stateAmplitude[2] = bosonStat * 0.5 * (stateAmplitude[4] * stateAmplitude[4] + stateAmplitude[5] * stateAmplitude[5]);
+        stateAmplitude[3] = bosonStat * 0.5 * (stateAmplitude[6] * stateAmplitude[6] + stateAmplitude[7] * stateAmplitude[7]);
+
+        if(stateAmplitude[0] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[0] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[0] );
+        if(stateAmplitude[1] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[1] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[1] );
+        if(stateAmplitude[2] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
+        if(stateAmplitude[3] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
+
+        totalPyx0mic1 += stateAmplitude[0];
+        totalPyx1mic1 += stateAmplitude[1];
+        totalPyx2mic1 += stateAmplitude[2];
+        totalPyx3mic1 += stateAmplitude[3];
+
+    }
+
+}
+
+#pragma offload wait(&signal_var0) target (mic:0)
+{
+
+}
+
+#pragma offload wait(&signal_var1) target (mic:1)
+{
+
+}
+
+    parallelMutualEntropyMic0 += parallelMutualEntropyMic1;
+
+    totalPyx0mic0 = 1 - totalPyx0mic0 - totalPyx0mic1;
+    totalPyx1mic0 = 1 - totalPyx1mic0 - totalPyx1mic1;
+    totalPyx2mic0 = 1 - totalPyx2mic0 - totalPyx2mic1;
+    totalPyx3mic0 = 1 - totalPyx3mic0 - totalPyx3mic1;
+
+    double logNum = totalPyx0mic0 + totalPyx1mic0 + totalPyx2mic0 + totalPyx3mic0;
+
+    if(totalPyx0mic0 > 0 && logNum > 0) parallelMutualEntropyMic0 += totalPyx0mic0 * log2( logNum / totalPyx0mic0 );
+    if(totalPyx1mic0 > 0 && logNum > 0) parallelMutualEntropyMic0 += totalPyx1mic0 * log2( logNum / totalPyx1mic0 );
+    if(totalPyx2mic0 > 0 && logNum > 0) parallelMutualEntropyMic0 += totalPyx2mic0 * log2( logNum / totalPyx2mic0 );
+    if(totalPyx3mic0 > 0 && logNum > 0) parallelMutualEntropyMic0 += totalPyx3mic0 * log2( logNum / totalPyx3mic0 );
+
+    mutualEntropy = parallelMutualEntropyMic0;
 
     return;
 
@@ -476,7 +583,7 @@ void LinearOpticalTransform::checkThreadsAndProcs(){
 
     //std::cout << "Number of coprocessors: " << num_coprocessors << std::endl;
 
-#pragma offload target (mic) inout(numProcs)
+#pragma offload target (mic:0) inout(numProcs)
 #pragma omp parallel
 {
 
@@ -485,6 +592,8 @@ void LinearOpticalTransform::checkThreadsAndProcs(){
     if(threadID == 0) numProcs = omp_get_num_threads();
 
 }
+
+    numProcs *= num_coprocessors;
 
     std::ofstream outfile("timingTest.dat",std::ofstream::app);
 
@@ -593,11 +702,18 @@ void LinearOpticalTransform::setParallelGrid(){
 
     dev_parallelGrid = new int[pGridSize];
 
-    assert( tempDist.size() == pGridSize );
+    assert( tempDist.size() <= pGridSize );
 
     for(int i=0;i<tempDist.size();i++) dev_parallelGrid[i] = tempDist(i);
+    for(int i=tempDist.size();i<pGridSize;i++) dev_parallelGrid[i] = 0;
 
-#pragma offload target(mic) in(dev_parallelGrid[0:pGridSize] : ALLOC RETAIN )
+#pragma offload target(mic:0) in(dev_parallelGrid[0:pGridSize] : ALLOC RETAIN )
+#pragma omp parallel
+{
+
+}
+
+#pragma offload target(mic:1) in(dev_parallelGrid[0:pGridSize] : ALLOC RETAIN )
 #pragma omp parallel
 {
 

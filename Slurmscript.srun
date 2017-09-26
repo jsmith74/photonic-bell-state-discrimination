@@ -5,7 +5,7 @@
 #SBATCH --nodes=1               # Number of Nodes
 #SBATCH --ntasks-per-node=1     # Number of tasks (MPI presseces)
 #SBATCH --cpus-per-task=1      # Number of processors per task OpenMP threads()
-#SBATCH --gres=mic:1            # Number of Co-Processors
+#SBATCH --gres=mic:2            # Number of Co-Processors
 
 module load intel-psxe/2015-update1
 module load intel/mic/sdk/3.3
