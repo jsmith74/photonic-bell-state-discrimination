@@ -4,7 +4,9 @@
 #include <iostream>
 #include <omp.h>
 
-int main(){
+int main( int argc, char *argv[] ){
+
+    int CPUWorkload = std::atoi( argv[1] );
 
     for(int i=0;i<1000;i++){
 
@@ -12,9 +14,7 @@ int main(){
 
         double maxStepSize = 200.0;
 
-        int intParam = 0;
-
-        BFGS_Optimization optimizer(gradientCheck,maxStepSize,intParam);
+        BFGS_Optimization optimizer(gradientCheck,maxStepSize,CPUWorkload);
 
         optimizer.minimize();
 

@@ -16,12 +16,13 @@ class LinearOpticalTransform{
 
         double mutualEntropy;
         LinearOpticalTransform();
-        void initializeCircuit(int& ancillaP,int& ancillaM);
+        void initializeCircuit(int& ancillaP,int& ancillaM,int intParam);
         void setMutualEntropy(Eigen::MatrixXcd& U);
 
     private:
 
-        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs, num_coprocessors, pGridSize;
+        int ancillaPhotons, ancillaModes, HSDimension, numThreadsCPU;
+        int numThreadsPhi, num_coprocessors, pGridSize, CPUWorkload;
         std::vector<double> factorial;
 
         int g(const int& n,const int& m);
