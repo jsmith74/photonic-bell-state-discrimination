@@ -156,9 +156,13 @@ __declspec(target(mic)) inline void complex_special_op_plus(double* result,doubl
 
     double temp[2];
 
+    //for(int i=0;i<2;i++) temp[i] = c1[0] * c2[i] + ( -1 + 2*i ) *  c1[1] * c2[1-i] + c3[i] * c4[0] + ( -1 + 2*i ) * c3[1-i] * c4[1];
+
     temp[0] = c1[0] * c2[0] - c1[1] * c2[1] + c3[0] * c4[0] - c3[1] * c4[1];
 
-    temp[1] = c1[0] * c2[1] + c2[0] * c1[1] + c4[0] * c3[1] + c3[0] * c4[1];
+    temp[1] = c1[0] * c2[1] + c1[1] * c2[0] + c3[1] * c4[0] + c3[0] * c4[1];
+
+    //for(int i=0;i<2;i++) result[i] += cProd[i] * temp[0] + ( -1 + 2*i ) * cProd[1-i] * temp[1];
 
     result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
 
@@ -172,9 +176,13 @@ __declspec(target(mic)) inline void complex_special_op_minus(double* result,doub
 
     double temp[2];
 
+    //for(int i=0;i<2;i++) temp[i] = c1[0] * c2[i] + ( -1 + 2*i ) * c1[1] * c2[1-i] - c3[i] * c4[0] + ( 1-2*i ) * c3[1-i] * c4[1];
+
     temp[0] = c1[0] * c2[0] - c1[1] * c2[1] - c3[0] * c4[0] + c3[1] * c4[1];
 
-    temp[1] = c1[0] * c2[1] + c2[0] * c1[1] - c4[0] * c3[1] - c3[0] * c4[1];
+    temp[1] = c1[0] * c2[1] + c1[1] * c2[0] - c3[1] * c4[0] - c3[0] * c4[1];
+
+    //for(int i=0;i<2;i++) result[i] += cProd[i] * temp[0] + ( -1 + 2*i ) * cProd[1-i] * temp[1];
 
     result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
 
