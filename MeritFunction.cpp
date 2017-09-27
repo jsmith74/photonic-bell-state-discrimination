@@ -4,10 +4,9 @@
 
 #define SUCCESS_MUT_ENT 1.55
 
-#define AMPLITUDE_SCALING 0.35
+#define AMPLITUDE_SCALING 1000.0
 
-//#define CHECK_AMPLITUDE_SCALING
-
+#define INITIAL_CONDITION_RANDOM_DEGREE 2000
 
 void MeritFunction::setMeritFunction(int intParam){
 
@@ -16,15 +15,9 @@ void MeritFunction::setMeritFunction(int intParam){
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
-    funcDimension = 2 * ( 4 + ancillaModes ) * ( 4 + ancillaModes );
+    funcDimension = (4 + ancillaModes) * (4 + ancillaModes);
 
     U.resize( 4 + ancillaModes,4 + ancillaModes );
-
-    #ifdef CHECK_AMPLITUDE_SCALING
-
-        checkSVDInitialConditionScaling();
-
-    #endif // CHECK_AMPLITUDE_SCALING
 
     return;
 
@@ -34,15 +27,7 @@ void MeritFunction::setMeritFunction(int intParam){
 
 double MeritFunction::f(Eigen::VectorXd& position){
 
-    std::complex<double> I(0.0,1.0);
-
-    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
-
-    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) *= std::exp( I * position(i + funcDimension/2) );
-
-    Eigen::JacobiSVD<Eigen::MatrixXcd> svd(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-    if( svd.singularValues()(0) > 1 ) U /= svd.singularValues()(0);
+    // Convert the position to a unitary matrix
 
     LOCircuit.setMutualEntropy(U);
 
@@ -97,48 +82,105 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
 Eigen::VectorXd MeritFunction::setInitialPosition(){
 
-    Eigen::VectorXd position = Eigen::VectorXd::Random(funcDimension);
+    U = Eigen::MatrixXcd::Identity(U.rows(),U.cols());
 
-    for(int i=0;i<funcDimension/2;i++) position(i) *= AMPLITUDE_SCALING;
+    Eigen::VectorXd position(funcDimension);
 
-    for(int i=funcDimension/2;i<funcDimension;i++) position(i) *= PI;
+    int ampSize = U.rows() + ( U.rows() * U.rows() - U.rows() ) / 2;
+
+    for(int j=0;j<INITIAL_CONDITION_RANDOM_DEGREE;j++){
+
+        position = PI * Eigen::VectorXd::Random(funcDimension);
+
+        for(int i=0;i<ampSize;i++) position(i) *= AMPLITUDE_SCALING;
+
+        Eigen::MatrixXcd H( U.rows(),U.cols() );
+
+        setAntiHermitian( H, position );
+
+        Eigen::MatrixXcd UTemp( H.rows(),H.cols() );
+        UTemp = H.exp();
+
+        U = UTemp * U;
+
+    }
+
+    std::cout << U << std::endl << std::endl;
+
+    setPosition( U, position );
+
+    setAntiHermitian( U , position );
+
+    std::cout << U << std::endl << std::endl;
+
+    U = U.exp().eval();
+
+    std::cout << U << std::endl << std::endl;
+
+    assert( false );
 
     return position;
 
 }
 
+void MeritFunction::setPosition(Eigen::MatrixXcd& U, Eigen::VectorXd& position){
 
-void MeritFunction::checkSVDInitialConditionScaling(){
+    Eigen::MatrixXcd H(U.rows(),U.cols());
 
-    for(int i=0;i<1000;i++){
+    std::complex<double> I(0.0,1.0);
 
-        Eigen::VectorXd position = setInitialPosition();
+    H = U.log();
 
-        std::complex<double> I(0.0,1.0);
+    H *= -I;
 
-        for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
+    std::cout << H << std::endl << std::endl;
 
-        for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) *= std::exp( I * position(i + funcDimension/2) );
+    int k = 0;
 
-        std::cout << U << std::endl << std::endl;
+    for(int i=0;i<H.rows();i++) for(int j=i;j<H.cols();j++){
 
-        Eigen::JacobiSVD<Eigen::MatrixXcd> svd(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-        std::cout << svd.matrixU() * svd.singularValues().asDiagonal() * svd.matrixV().conjugate().transpose() << std::endl << std::endl;
-
-        std::cout << svd.singularValues() << std::endl;
-
-        std::ofstream outfile("SVTest.dat",std::ofstream::app);
-
-        for(int i=0;i<svd.singularValues().size();i++) outfile << std::setprecision(16) << svd.singularValues()(i) << "\t";
-
-        outfile << std::endl;
-
-        outfile.close();
+        position(k) = std::sqrt( std::norm(H(i,j)) ) ;
+        k++;
 
     }
 
-    assert( false );
+    for(int i=0;i<H.rows();i++) for(int j=i+1;j<H.cols();j++){
+
+        position(k) = std::arg( H(i,j) );
+        k++;
+
+    }
+
+    return;
+
+}
+
+void MeritFunction::setAntiHermitian( Eigen::MatrixXcd& H,Eigen::VectorXd& position ){
+
+    int k = 0;
+
+    for(int i=0;i<H.rows();i++) for(int j=i;j<H.cols();j++){
+
+        H(i,j) = position(k);
+        H(j,i) = position(k);
+
+        k++;
+
+    }
+
+    std::complex<double> I(0.0,1.0);
+
+    for(int i=0;i<H.rows();i++) for(int j=i+1;j<H.cols();j++){
+
+        H(i,j) *= std::exp( I * position(k) );
+
+        H(j,i) *= std::exp( -I * position(k) );
+
+        k++;
+
+    }
+
+    H = I * H;
 
     return;
 

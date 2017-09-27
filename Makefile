@@ -1,7 +1,7 @@
 CC = icpc
 CFLAGS = -O3 -xavx -c
 LFLAGS = -O3 -xavx
-EIGENFLAGS = -inline-forceinline -funroll-loops
+EIGENFLAGS = -funroll-loops
 OBJS = main.o LinearOpticalTransform.o MeritFunction.o BFGS_Optimization.o
 OMPFLAGS = -fopenmp
 

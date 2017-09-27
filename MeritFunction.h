@@ -26,7 +26,8 @@ class MeritFunction{
         LinearOpticalTransform LOCircuit;
         Eigen::MatrixXcd U;
 
-        void checkSVDInitialConditionScaling();
+        void setAntiHermitian( Eigen::MatrixXcd& H,Eigen::VectorXd& position );
+        void setPosition(Eigen::MatrixXcd& U, Eigen::VectorXd& position);
 
 };
 
