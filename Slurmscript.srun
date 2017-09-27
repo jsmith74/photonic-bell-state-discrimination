@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --qos=normal            # Quality of Service
-#SBATCH --job-name=offloadTest   # Job Name
-#SBATCH --time=00:10:00         # WallTime
+#SBATCH --job-name=Ma8_Nonunitary   # Job Name
+#SBATCH --time=1-00:00:00         # WallTime
 #SBATCH --nodes=1               # Number of Nodes
 #SBATCH --ntasks-per-node=1     # Number of tasks (MPI presseces)
 #SBATCH --cpus-per-task=20      # Number of processors per task OpenMP threads()
@@ -16,5 +16,4 @@ export MIC_ENV_PREFIX=MIC
 export MIC_OMP_NUM_THREADS=240
 export MIC_KMP_AFFINITY=compact
 
-./Script
-
+./LinearOpticalSimulation

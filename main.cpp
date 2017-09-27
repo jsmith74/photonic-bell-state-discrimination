@@ -4,9 +4,9 @@
 #include <iostream>
 #include <omp.h>
 
-int main( int argc, char *argv[] ){
+int main(){
 
-    int CPUWorkload = std::atoi( argv[1] );
+    int CPUWorkload = 188400000;
 
     for(int i=0;i<1000;i++){
 

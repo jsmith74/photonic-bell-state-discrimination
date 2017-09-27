@@ -25,14 +25,14 @@
 
 /** ===== Print Step Monitor ======================================= */
 
-//#define PRINT_STEP_MONITOR
+#define PRINT_STEP_MONITOR
 
 /** ================================================================ */
 
 
 /** ===== Seed Random Number Generator ============================= */
 
-//#define SEED_RANDOM_NUMBER_GENERATOR
+#define SEED_RANDOM_NUMBER_GENERATOR
 
 /** ================================================================ */
 

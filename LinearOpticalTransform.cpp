@@ -22,17 +22,11 @@ __declspec(target(mic)) int* dev_factorial;
 __declspec(target(mic)) int dev_numThreadsCPU;
 
 
-LinearOpticalTransform::LinearOpticalTransform(){
-
-
-
-}
-
-
-
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM,int intParam){
 
-    CPUWorkload = intParam;
+    if(ANCILLA_MODES == 8) CPUWorkload = 188400000;
+    else if(ANCILLA_MODES == 6) CPUWorkload = 1;
+    else assert( false );
 
     ancillaPhotons = ancillaP;
     ancillaModes = ancillaM;
@@ -160,13 +154,9 @@ __declspec(target(mic)) inline void complex_special_op_plus(double* result,doubl
 
     double temp[2];
 
-    //for(int i=0;i<2;i++) temp[i] = c1[0] * c2[i] + ( -1 + 2*i ) *  c1[1] * c2[1-i] + c3[i] * c4[0] + ( -1 + 2*i ) * c3[1-i] * c4[1];
-
     temp[0] = c1[0] * c2[0] - c1[1] * c2[1] + c3[0] * c4[0] - c3[1] * c4[1];
 
     temp[1] = c1[0] * c2[1] + c1[1] * c2[0] + c3[1] * c4[0] + c3[0] * c4[1];
-
-    //for(int i=0;i<2;i++) result[i] += cProd[i] * temp[0] + ( -1 + 2*i ) * cProd[1-i] * temp[1];
 
     result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
 
@@ -180,13 +170,9 @@ __declspec(target(mic)) inline void complex_special_op_minus(double* result,doub
 
     double temp[2];
 
-    //for(int i=0;i<2;i++) temp[i] = c1[0] * c2[i] + ( -1 + 2*i ) * c1[1] * c2[1-i] - c3[i] * c4[0] + ( 1-2*i ) * c3[1-i] * c4[1];
-
     temp[0] = c1[0] * c2[0] - c1[1] * c2[1] - c3[0] * c4[0] + c3[1] * c4[1];
 
     temp[1] = c1[0] * c2[1] + c1[1] * c2[0] - c3[1] * c4[0] - c3[0] * c4[1];
-
-    //for(int i=0;i<2;i++) result[i] += cProd[i] * temp[0] + ( -1 + 2*i ) * cProd[1-i] * temp[1];
 
     result[0] += cProd[0] * temp[0] - cProd[1] * temp[1];
 
@@ -841,12 +827,6 @@ void LinearOpticalTransform::setParallelGrid(){
 
     assert( termCounter.sum() == k );
 
-    outfile.open("timingTest.dat",std::ofstream::app);
-
-    outfile << CPUWorkload << "\t";
-
-    outfile.close();
-
     return;
 
 }
@@ -895,5 +875,11 @@ __declspec(target(mic)) bool dev_next_permutation(int* __first, int* __last) {
       return false;
     }
   }
+
+}
+
+LinearOpticalTransform::LinearOpticalTransform(){
+
+
 
 }

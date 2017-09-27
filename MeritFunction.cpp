@@ -8,17 +8,11 @@
 
 //#define CHECK_AMPLITUDE_SCALING
 
+
 void MeritFunction::setMeritFunction(int intParam){
 
     int ancillaPhotons = 6;
     int ancillaModes = 8;
-
-    /** ======================================================================
-
-            REMEMBER TO CHECK THE AMPLITUDE SCALING FOR AN APPROPRIATE STARTING RANGE FOR EACH
-            CONFIGURATION OF ANCILLA RESOURCES - MAKE SURE TO TURN OFF PARALELLIZATION IN main.cpp
-
-        ====================================================================== */
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
@@ -40,8 +34,6 @@ void MeritFunction::setMeritFunction(int intParam){
 
 double MeritFunction::f(Eigen::VectorXd& position){
 
-    double t1 = omp_get_wtime();
-
     std::complex<double> I(0.0,1.0);
 
     for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
@@ -53,20 +45,6 @@ double MeritFunction::f(Eigen::VectorXd& position){
     if( svd.singularValues()(0) > 1 ) U /= svd.singularValues()(0);
 
     LOCircuit.setMutualEntropy(U);
-
-    double t2 = omp_get_wtime();
-
-    std::cout << "Running time: " << t2 - t1 << " seconds." << std::endl;
-
-    std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
-
-    std::ofstream outfile("timingTest.dat",std::ofstream::app);
-
-    outfile << std::setprecision(16) << t2 - t1 << "\t" << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
-
-    outfile.close();
-
-    assert( false );
 
     return LOCircuit.mutualEntropy;
 
@@ -87,15 +65,15 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
     LOCircuit.setMutualEntropy(U);
 
-    std::cout << "H(X:Y): " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl << std::endl;
+    std::ofstream outfile("resultMonitor.dat",std::ofstream::app);
 
-    std::cout << "U:\n" << std::setprecision(6) << U << std::endl << std::endl;
+    outfile << "H(X:Y): " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl << std::endl;
 
-    std::cout << "Singular values of U (prior to normalization):\n" << std::setprecision(6) << svd.singularValues() << std::endl << std::endl;
+    outfile.close();
 
     if(2.0 - 0.25 * LOCircuit.mutualEntropy > SUCCESS_MUT_ENT){
 
-        std::ofstream outfile("Success.dat",std::ofstream::app);
+        outfile.open("Success.dat",std::ofstream::app);
 
         outfile << "H(X:Y): " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl << std::endl;
 
