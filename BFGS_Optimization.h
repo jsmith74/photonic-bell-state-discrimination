@@ -3,6 +3,7 @@
 
 #include "MeritFunction.h"
 #include <iomanip>
+#include <omp.h>
 
 class BFGS_Optimization{
 

@@ -6,6 +6,9 @@
 #include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <omp.h>
+#include <fstream>
+
 
 class LinearOpticalTransform{
 
@@ -18,8 +21,9 @@ class LinearOpticalTransform{
 
     private:
 
-        int ancillaPhotons, ancillaModes, HSDimension;
+        int ancillaPhotons, ancillaModes, HSDimension, termsPerThread, numProcs;
         std::vector<double> factorial;
+        std::vector<int> parallelGrid;
         std::vector< std::vector<int> > nPrime, mPrime;
 
         int g(const int& n,const int& m);
@@ -27,21 +31,27 @@ class LinearOpticalTransform{
         void setToFullHilbertSpace(int subPhotons, int subModes,Eigen::MatrixXi& nv);
         void setNPrimeAndMPrime(std::vector< std::vector<int> >& nPrime,std::vector< std::vector<int> >& mPrime);
         void setmVec(std::vector<int>& m, std::vector<int>& n);
-        inline void setStateAmplitude(std::complex<double> stateAmplitude[],Eigen::MatrixXcd& U,int& y);
-        inline void normalizeStateAmplitude(std::complex<double> stateAmplitude[],int& y);
+        inline void setStateAmplitude(std::complex<double> stateAmplitude[],Eigen::MatrixXcd& U,int y);
+        inline void normalizeStateAmplitude(std::complex<double> stateAmplitude[],int y);
+
+        void setMPrime( int* __nBegin, int* __mBegin );
+        bool iterateNPrime(int* __begin,int* __end);
+
+        void checkThreadsAndProcs();
+        void setParallelGrid();
 
         template<typename T>
         void printVec(std::vector<T>& vec);
 };
 
-inline void LinearOpticalTransform::normalizeStateAmplitude(std::complex<double> stateAmplitude[],int& y){
+inline void LinearOpticalTransform::normalizeStateAmplitude(std::complex<double> stateAmplitude[],int y){
 
     stateAmplitude[0] *= 0.7071067811865475;
     stateAmplitude[1] *= 0.7071067811865475;
     stateAmplitude[2] *= 0.7071067811865475;
     stateAmplitude[3] *= 0.7071067811865475;
 
-    for(int p=0;p<nPrime[y].size();p++){
+    for(int p=0;p<ancillaModes+4;p++){
 
         stateAmplitude[0] *= sqrt( factorial[ nPrime[y][p] ] );
         stateAmplitude[1] *= sqrt( factorial[ nPrime[y][p] ] );
@@ -54,7 +64,7 @@ inline void LinearOpticalTransform::normalizeStateAmplitude(std::complex<double>
 
 }
 
-inline void LinearOpticalTransform::setStateAmplitude(std::complex<double> stateAmplitude[],Eigen::MatrixXcd& U,int& y){
+inline void LinearOpticalTransform::setStateAmplitude(std::complex<double> stateAmplitude[],Eigen::MatrixXcd& U,int y){
 
     std::complex<double> UProdTemp(1.0,0.0);
 

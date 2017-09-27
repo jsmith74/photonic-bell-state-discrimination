@@ -10,8 +10,8 @@
 
 void MeritFunction::setMeritFunction(int intParam){
 
-    int ancillaPhotons = 2;
-    int ancillaModes = 2;
+    int ancillaPhotons = 6;
+    int ancillaModes = 8;
 
     /** ======================================================================
 
@@ -40,6 +40,8 @@ void MeritFunction::setMeritFunction(int intParam){
 
 double MeritFunction::f(Eigen::VectorXd& position){
 
+    double t1 = omp_get_wtime();
+
     std::complex<double> I(0.0,1.0);
 
     for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
@@ -51,6 +53,34 @@ double MeritFunction::f(Eigen::VectorXd& position){
     if( svd.singularValues()(0) > 1 ) U /= svd.singularValues()(0);
 
     LOCircuit.setMutualEntropy(U);
+
+    double t2 = omp_get_wtime();
+
+    std::cout << "Running time: " << t2 - t1 << " seconds." << std::endl;
+
+    std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+
+    position = Eigen::VectorXd::Random( position.size() );
+
+    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
+
+    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) *= std::exp( I * position(i + funcDimension/2) );
+
+    Eigen::JacobiSVD<Eigen::MatrixXcd> svd2(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    if( svd2.singularValues()(0) > 1 ) U /= svd2.singularValues()(0);
+
+    LOCircuit.setMutualEntropy(U);
+
+    std::cout << "Result : " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+
+    std::ofstream outfile("timingTest.dat",std::ofstream::app);
+
+    outfile << std::setprecision(16) << t2 - t1 << std::endl;
+
+    outfile.close();
+
+    assert( false );
 
     return LOCircuit.mutualEntropy;
 
