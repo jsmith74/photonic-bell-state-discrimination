@@ -27,7 +27,9 @@ void MeritFunction::setMeritFunction(int intParam){
 
 double MeritFunction::f(Eigen::VectorXd& position){
 
-    // Convert the position to a unitary matrix
+    setAntiHermitian( U , position );
+
+    U = U.exp().eval();
 
     LOCircuit.setMutualEntropy(U);
 
@@ -38,15 +40,9 @@ double MeritFunction::f(Eigen::VectorXd& position){
 
 void MeritFunction::printReport(Eigen::VectorXd& position){
 
-    std::complex<double> I(0.0,1.0);
+    setAntiHermitian( U , position );
 
-    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) = position(i);
-
-    for(int i=0;i<funcDimension/2;i++) U( i % U.rows(), i / U.rows() ) *= std::exp( I * position(i + funcDimension/2) );
-
-    Eigen::JacobiSVD<Eigen::MatrixXcd> svd(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-    if( svd.singularValues()(0) > 1 ) U /= svd.singularValues()(0);
+    U = U.exp().eval();
 
     LOCircuit.setMutualEntropy(U);
 
@@ -105,19 +101,7 @@ Eigen::VectorXd MeritFunction::setInitialPosition(){
 
     }
 
-    std::cout << U << std::endl << std::endl;
-
     setPosition( U, position );
-
-    setAntiHermitian( U , position );
-
-    std::cout << U << std::endl << std::endl;
-
-    U = U.exp().eval();
-
-    std::cout << U << std::endl << std::endl;
-
-    assert( false );
 
     return position;
 
@@ -131,15 +115,14 @@ void MeritFunction::setPosition(Eigen::MatrixXcd& U, Eigen::VectorXd& position){
 
     H = U.log();
 
-    H *= -I;
-
-    std::cout << H << std::endl << std::endl;
+    H /= I;
 
     int k = 0;
 
     for(int i=0;i<H.rows();i++) for(int j=i;j<H.cols();j++){
 
         position(k) = std::sqrt( std::norm(H(i,j)) ) ;
+        if( i==j && std::real(H(i,j)) < 0 ) position(k) *= -1;
         k++;
 
     }

@@ -8,17 +8,13 @@ int main(){
 
     int CPUWorkload = 188400000;
 
-    for(int i=0;i<1000;i++){
+    double gradientCheck = 1e-4;
 
-        double gradientCheck = 1e-4;
+    double maxStepSize = 200.0;
 
-        double maxStepSize = 200.0;
+    BFGS_Optimization optimizer(gradientCheck,maxStepSize,CPUWorkload);
 
-        BFGS_Optimization optimizer(gradientCheck,maxStepSize,CPUWorkload);
-
-        optimizer.minimize();
-
-    }
+    for(int i=0;i<1000;i++) optimizer.minimize();
 
     return 0;
 

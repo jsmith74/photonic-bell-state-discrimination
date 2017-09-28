@@ -186,34 +186,24 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
     double parallelMutualEntropyMic0;
 
-    double totalPyx0mic0;
-    double totalPyx1mic0;
-    double totalPyx2mic0;
-    double totalPyx3mic0;
-
     double* dev_U = (double*)U.data();
 
     char signal_var0, signal_var1;
 
 #pragma offload signal(&signal_var0) target (mic:0) \
-                    out(parallelMutualEntropyMic0,totalPyx0mic0,totalPyx1mic0,totalPyx2mic0,totalPyx3mic0) \
+                    out(parallelMutualEntropyMic0) \
                     in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
                     nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
                     nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
                     nocopy(dev_mPrime[0:HSDimension * (2 + ANCILLA_PHOTONS)] : REUSE RETAIN ) \
                     nocopy(dev_factorial[0:ANCILLA_PHOTONS + 2 + 1] : REUSE RETAIN ) \
                     nocopy(dev_numThreadsCPU : REUSE RETAIN)
-#pragma omp parallel reduction(+:parallelMutualEntropyMic0,totalPyx0mic0,totalPyx1mic0,totalPyx2mic0,totalPyx3mic0)
+#pragma omp parallel reduction(+:parallelMutualEntropyMic0)
 {
 
     int threadID = omp_get_thread_num() + dev_numThreadsCPU;
 
     parallelMutualEntropyMic0 = 0;
-
-    totalPyx0mic0 = 0;
-    totalPyx1mic0 = 0;
-    totalPyx2mic0 = 0;
-    totalPyx3mic0 = 0;
 
     for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
 
@@ -264,41 +254,27 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
         if(stateAmplitude[2] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
         if(stateAmplitude[3] != 0.0) parallelMutualEntropyMic0 += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
 
-        totalPyx0mic0 += stateAmplitude[0];
-        totalPyx1mic0 += stateAmplitude[1];
-        totalPyx2mic0 += stateAmplitude[2];
-        totalPyx3mic0 += stateAmplitude[3];
-
     }
 
 }
 
     double parallelMutualEntropyMic1;
 
-    double totalPyx0mic1;
-    double totalPyx1mic1;
-    double totalPyx2mic1;
-    double totalPyx3mic1;
 
 #pragma offload signal(&signal_var1) target (mic:1) \
-                    out(parallelMutualEntropyMic1,totalPyx0mic1,totalPyx1mic1,totalPyx2mic1,totalPyx3mic1) \
+                    out(parallelMutualEntropyMic1) \
                     in(dev_U[0:2*(4+ANCILLA_MODES)*(4+ANCILLA_MODES)] :  ALLOC FREE ) \
                     nocopy(dev_parallelGrid[0:pGridSize] : REUSE RETAIN ) \
                     nocopy(dev_nPrime[0:HSDimension * (4 + ANCILLA_MODES)] : REUSE RETAIN ) \
                     nocopy(dev_mPrime[0:HSDimension * (2 + ANCILLA_PHOTONS)] : REUSE RETAIN ) \
                     nocopy(dev_factorial[0:ANCILLA_PHOTONS + 2 + 1] : REUSE RETAIN ) \
                     nocopy(dev_numThreadsCPU : REUSE RETAIN)
-#pragma omp parallel reduction(+:parallelMutualEntropyMic1,totalPyx0mic1,totalPyx1mic1,totalPyx2mic1,totalPyx3mic1)
+#pragma omp parallel reduction(+:parallelMutualEntropyMic1)
 {
 
     int threadID = omp_get_thread_num() + omp_get_num_threads() + dev_numThreadsCPU;
 
     parallelMutualEntropyMic1 = 0;
-
-    totalPyx0mic1 = 0;
-    totalPyx1mic1 = 0;
-    totalPyx2mic1 = 0;
-    totalPyx3mic1 = 0;
 
     for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
 
@@ -349,35 +325,20 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
         if(stateAmplitude[2] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
         if(stateAmplitude[3] != 0.0) parallelMutualEntropyMic1 += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
 
-        totalPyx0mic1 += stateAmplitude[0];
-        totalPyx1mic1 += stateAmplitude[1];
-        totalPyx2mic1 += stateAmplitude[2];
-        totalPyx3mic1 += stateAmplitude[3];
-
     }
 
 }
 
     double parallelMutualEntropy = 0;
 
-    double totalPyx0 = 0;
-    double totalPyx1 = 0;
-    double totalPyx2 = 0;
-    double totalPyx3 = 0;
-
 
 #pragma omp parallel default(none) shared(dev_nPrime,dev_mPrime,dev_U,dev_parallelGrid,dev_factorial) \
-        reduction(+:parallelMutualEntropy,totalPyx0,totalPyx1,totalPyx2,totalPyx3)
+        reduction(+:parallelMutualEntropy)
 {
 
     int threadID = omp_get_thread_num();
 
     parallelMutualEntropy = 0;
-
-    totalPyx0 = 0;
-    totalPyx1 = 0;
-    totalPyx2 = 0;
-    totalPyx3 = 0;
 
     for( int y=dev_parallelGrid[threadID]; y<dev_parallelGrid[threadID+1]; y++ ){
 
@@ -428,11 +389,6 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
         if(stateAmplitude[2] != 0.0) parallelMutualEntropy += stateAmplitude[2] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[2] );
         if(stateAmplitude[3] != 0.0) parallelMutualEntropy += stateAmplitude[3] * log2( ( stateAmplitude[0] + stateAmplitude[1] + stateAmplitude[2] + stateAmplitude[3] ) / stateAmplitude[3] );
 
-        totalPyx0 += stateAmplitude[0];
-        totalPyx1 += stateAmplitude[1];
-        totalPyx2 += stateAmplitude[2];
-        totalPyx3 += stateAmplitude[3];
-
     }
 
 }
@@ -448,18 +404,6 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 }
 
     parallelMutualEntropy += parallelMutualEntropyMic0 + parallelMutualEntropyMic1;
-
-    totalPyx0 = 1 - totalPyx0 - totalPyx0mic0 - totalPyx0mic1;
-    totalPyx1 = 1 - totalPyx1 - totalPyx1mic0 - totalPyx1mic1;
-    totalPyx2 = 1 - totalPyx2 - totalPyx2mic0 - totalPyx2mic1;
-    totalPyx3 = 1 - totalPyx3 - totalPyx3mic0 - totalPyx3mic1;
-
-    double logNum = totalPyx0 + totalPyx1 + totalPyx2 + totalPyx3;
-
-    if(totalPyx0 > 0 && logNum > 0) parallelMutualEntropy += totalPyx0 * log2( logNum / totalPyx0 );
-    if(totalPyx1 > 0 && logNum > 0) parallelMutualEntropy += totalPyx1 * log2( logNum / totalPyx1 );
-    if(totalPyx2 > 0 && logNum > 0) parallelMutualEntropy += totalPyx2 * log2( logNum / totalPyx2 );
-    if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
 
     mutualEntropy = parallelMutualEntropy;
 
