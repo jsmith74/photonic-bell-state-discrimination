@@ -60,8 +60,6 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
         outfile << "U:\n" << std::setprecision(6) << U << std::endl << std::endl;
 
-        outfile << "Singular values of U (prior to normalization):\n" << std::setprecision(6) << svd.singularValues() << std::endl << std::endl;
-
         for(int i=0;i<position.size();i++) outfile << std::setprecision(16) << position(i) << ",";
 
         outfile << std::endl << std::endl;
