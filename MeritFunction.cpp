@@ -4,7 +4,7 @@
 
 #define SUCCESS_MUT_ENT 1.55
 
-#define AMPLITUDE_SCALING 0.35
+#define AMPLITUDE_SCALING 0.25
 
 //#define CHECK_AMPLITUDE_SCALING
 
@@ -12,7 +12,7 @@
 void MeritFunction::setMeritFunction(int intParam){
 
     int ancillaPhotons = 6;
-    int ancillaModes = 8;
+    int ancillaModes = 6;
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
