@@ -24,7 +24,7 @@ __declspec(target(mic)) int dev_numThreadsCPU;
 
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM,int intParam){
 
-    CPUWorkload = 188400000;
+    CPUWorkload = 51100000;
 
     ancillaPhotons = ancillaP;
     ancillaModes = ancillaM;
