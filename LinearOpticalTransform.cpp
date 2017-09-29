@@ -24,7 +24,7 @@ __declspec(target(mic)) int dev_numThreadsCPU;
 
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM,int intParam){
 
-    if(ANCILLA_MODES == 8) CPUWorkload = 188400000;
+    if(ANCILLA_MODES == 8) CPUWorkload = 180000000;
     else if(ANCILLA_MODES == 6) CPUWorkload = 1;
     else assert( false );
 
