@@ -11,7 +11,7 @@
 void MeritFunction::setMeritFunction(int intParam){
 
     int ancillaPhotons = 6;
-    int ancillaModes = 8;
+    int ancillaModes = 6;
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
