@@ -5,6 +5,11 @@
 
 #define MACHINEPRECISION 1.1e-16
 
+/** ===== Print Position Near Time Cutoff ========================== */
+
+#define TIME_CUTOFF_POSITION_PRINT 85900
+
+/** ================================================================ */
 
 
 /** ===== Set the initial Hessian matrix =========================== */
@@ -355,7 +360,30 @@ void BFGS_Optimization::printStepMonitor(){
 
     #endif // PRINT_STEP_MONITOR
 
+    #ifdef TIME_CUTOFF_POSITION_PRINT
+
+        currentTime = omp_get_wtime();
+
+        if( currentTime - startTime > TIME_CUTOFF_POSITION_PRINT ) savePosition();
+
+    #endif // TIME_CUTOFF_POSITION_PRINT
+
     return;
+}
+
+void BFGS_Optimization::savePosition(){
+
+    std::ofstream outfile("savedPosition.dat");
+
+    outfile << "Running time: " << currentTime - startTime << std::endl << std::endl;
+
+    for(int i=0;i<position.size();i++) outfile << std::setprecision(16) << position(i) << " ";
+    outfile << std::endl << std::endl;
+
+    outfile.close();
+
+    return;
+
 }
 
 double BFGS_Optimization::minimize(){
@@ -504,6 +532,12 @@ void BFGS_Optimization::printResultReport(){
 
 
 BFGS_Optimization::BFGS_Optimization(double tolerance,double maxStepSize,int intParam){
+
+    #ifdef TIME_CUTOFF_POSITION_PRINT
+
+        startTime = omp_get_wtime();
+
+    #endif // TIME_CUTOFF_POSITION_PRINT
 
     #ifdef SEED_RANDOM_NUMBER_GENERATOR
 
