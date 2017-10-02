@@ -23,6 +23,8 @@ class BFGS_Optimization{
         double phi0,phi1,phi2;
         double phiPrime0,phiPrime1,phiPrime2;
 
+        double startTime, currentTime;
+
         Eigen::VectorXd position,alphaPosition;
         Eigen::VectorXd gradient;
         Eigen::VectorXd p,s,y;
@@ -42,6 +44,7 @@ class BFGS_Optimization{
         bool zoomGuard,quadInterpolationFailure,wolfeConditionFailure,maxStepSize,maxIterationGuard;
         double secondDerivativeTest;
         int funcDimension;
+        void savePosition();
 
 };
 
