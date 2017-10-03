@@ -356,7 +356,7 @@ void BFGS_Optimization::printStepMonitor(){
 
     #ifdef PRINT_STEP_MONITOR
 
-        std::cout << counter << "\t" << stepMonitor << "\t" << gradient.norm() << "\t" << rho << std::endl;
+        std::cout << counter << "\t" << std::setprecision(16) << stepMonitor << "\t" << 2.0 - 0.25 * stepMonitor << "\t" << gradient.norm() << "\t" << rho << std::endl;
 
     #endif // PRINT_STEP_MONITOR
 
