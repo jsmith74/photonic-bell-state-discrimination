@@ -25,14 +25,14 @@
 
 /** ===== Print Step Monitor ======================================= */
 
-//#define PRINT_STEP_MONITOR
+#define PRINT_STEP_MONITOR
 
 /** ================================================================ */
 
 
 /** ===== Seed Random Number Generator ============================= */
 
-//#define SEED_RANDOM_NUMBER_GENERATOR
+#define SEED_RANDOM_NUMBER_GENERATOR
 
 /** ================================================================ */
 
@@ -247,7 +247,7 @@ double BFGS_Optimization::zoom(double alphaLow,double alphaHigh,double phiLow,do
 
         #ifdef PRINT_STEP_MONITOR
 
-            std::cout << "\t\t\t\t" <<  phij << "\t" << phiLowPrime  << ": \t" << alphaj << "\t" << alphaLow << "\t" << alphaHigh << "\t" << phiLow << "\t" << phiHigh << std::endl;
+            //std::cout << "\t\t\t\t" <<  phij << "\t" << phiLowPrime  << ": \t" << alphaj << "\t" << alphaLow << "\t" << alphaHigh << "\t" << phiLow << "\t" << phiHigh << std::endl;
 
         #endif // PRINT_STEP_MONITOR
 
@@ -351,7 +351,7 @@ void BFGS_Optimization::printStepMonitor(){
 
     #ifdef PRINT_STEP_MONITOR
 
-        std::cout << counter << "\t" << stepMonitor << "\t" << gradient.norm() << "\t" << rho << std::endl;
+        std::cout << counter << "\t" << std::setprecision(16) << stepMonitor << "\t" << 2.0 - 0.25 * stepMonitor << "\t" << gradient.norm() << "\t" << rho << std::endl;
 
     #endif // PRINT_STEP_MONITOR
 

@@ -6,19 +6,16 @@
 
 int main(){
 
-    for(int i=0;i<1000;i++){
 
-        double gradientCheck = 1e-4;
+    double gradientCheck = 1e-4;
 
-        double maxStepSize = 200.0;
+    double maxStepSize = 200.0;
 
-        int intParam = 0;
+    int intParam = 0;
 
-        BFGS_Optimization optimizer(gradientCheck,maxStepSize,intParam);
+    BFGS_Optimization optimizer(gradientCheck,maxStepSize,intParam);
 
-        optimizer.minimize();
-
-    }
+    optimizer.minimize();
 
     return 0;
 
