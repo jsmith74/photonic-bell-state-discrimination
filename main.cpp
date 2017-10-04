@@ -8,7 +8,7 @@ int main(){
 
     int CPUWorkload = 51100000;
 
-    double gradientCheck = 1e-4;
+    double gradientCheck = 0.01;
 
     double maxStepSize = 200.0;
 
