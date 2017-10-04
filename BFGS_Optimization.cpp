@@ -7,7 +7,7 @@
 
 /** ===== Print Position Near Time Cutoff ========================== */
 
-#define TIME_CUTOFF_POSITION_PRINT 85900
+#define TIME_CUTOFF_POSITION_PRINT 604300
 
 /** ================================================================ */
 
