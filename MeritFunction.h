@@ -2,6 +2,7 @@
 #define MERITFUNCTION_H_INCLUDED
 
 #include "LinearOpticalTransform.h"
+#include "UGeneration.h"
 
 #include <Eigen/Dense>
 #include <iostream>
@@ -20,10 +21,13 @@ class MeritFunction{
         int funcDimension;
         void printReport(Eigen::VectorXd& position);
         Eigen::VectorXd setInitialPosition();
+        double entropyMonitor();
+        double zeroEntryMonitor();
 
     private:
 
         LinearOpticalTransform LOCircuit;
+        UGeneration UGenerator;
         Eigen::MatrixXcd U,V,W;
         Eigen::VectorXd D;
 
@@ -32,6 +36,7 @@ class MeritFunction{
 
         void setPosition1( Eigen::VectorXd& position );
         void setPosition2( Eigen::VectorXd& position );
+        void shiftUToZeroSolution(Eigen::VectorXd& position);
 
 };
 
