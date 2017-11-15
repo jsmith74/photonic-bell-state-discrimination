@@ -6,7 +6,7 @@
 
 int main(){
 
-    int CPUWorkload = 51100000;
+    int CPUWorkload = 188400000;
 
     double gradientCheck = 0.01;
 
