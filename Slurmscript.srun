@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --qos=long              # Quality of Service
-#SBATCH --job-name=Ma6_Unitary   # Job Name
+#SBATCH --job-name=Ma8_Unitary   # Job Name
 #SBATCH --time=7-00:00:00         # WallTime
 #SBATCH --nodes=1               # Number of Nodes
 #SBATCH --ntasks-per-node=1     # Number of tasks (MPI presseces)
