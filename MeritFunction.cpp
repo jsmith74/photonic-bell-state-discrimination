@@ -10,11 +10,14 @@
 
 #define SVD_SCALING 1.0
 
+#define ZERO_ENTRY_WEIGHT 0.1
+
+#define START_NEAR_ZERO_SOLUTION
 
 void MeritFunction::setMeritFunction(int intParam){
 
     int ancillaPhotons = 6;
-    int ancillaModes = 8;
+    int ancillaModes = 6;
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
@@ -48,10 +51,23 @@ double MeritFunction::f(Eigen::VectorXd& position){
 
     LOCircuit.setMutualEntropy(U);
 
-    return LOCircuit.mutualEntropy;
+    UGenerator.setZeroEntryQuant(U);
+
+    return LOCircuit.mutualEntropy + ZERO_ENTRY_WEIGHT * UGenerator.zeroEntryQuant;
 
 }
 
+double MeritFunction::zeroEntryMonitor(){
+
+     return UGenerator.zeroEntryQuant;
+
+}
+
+double MeritFunction::entropyMonitor(){
+
+    return 2.0 - 0.25 * LOCircuit.mutualEntropy;
+
+}
 
 void MeritFunction::printReport(Eigen::VectorXd& position){
 
@@ -85,6 +101,8 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
         outfile << "U:\n" << std::setprecision(6) << U << std::endl << std::endl;
 
+        outfile << "Zero matrix: " << UGenerator.zeroEntries << std::endl << std::endl;
+
         for(int i=0;i<position.size();i++) outfile << std::setprecision(16) << position(i) << ",";
 
         outfile << std::endl << std::endl;
@@ -100,6 +118,8 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
 
 Eigen::VectorXd MeritFunction::setInitialPosition(){
+
+    UGenerator.initializeUCondition1( U );
 
     V = Eigen::MatrixXcd::Identity(U.rows(),U.cols());
     W = Eigen::MatrixXcd::Identity(U.rows(),U.cols());
@@ -138,7 +158,21 @@ Eigen::VectorXd MeritFunction::setInitialPosition(){
     setPosition1( position );
     setPosition2( position );
 
+    #ifdef START_NEAR_ZERO_SOLUTION
+
+        shiftUToZeroSolution( position );
+
+    #endif // START_NEAR_ZERO_SOLUTION
+
     return position;
+
+}
+
+void MeritFunction::shiftUToZeroSolution(Eigen::VectorXd& position){
+
+    // TO DO - WRITE THIS FUNCTION
+
+    return;
 
 }
 
