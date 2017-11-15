@@ -2,7 +2,7 @@ CC = icpc
 CFLAGS = -O3 -xavx -c
 LFLAGS = -O3 -xavx
 EIGENFLAGS = -inline-forceinline -funroll-loops
-OBJS = main.o LinearOpticalTransform.o MeritFunction.o BFGS_Optimization.o
+OBJS = main.o LinearOpticalTransform.o MeritFunction.o UGeneration.o BFGS_Optimization.o
 OMPFLAGS = -fopenmp
 
 all: LinearOpticalSimulation
@@ -21,6 +21,9 @@ MeritFunction.o: MeritFunction.cpp
 
 BFGS_Optimization.o: BFGS_Optimization.cpp
 	$(CC) $(CFLAGS) $(EIGENFLAGS) BFGS_Optimization.cpp
+
+UGeneration.o: UGeneration.cpp
+	$(CC) $(CFLAGS) $(EIGENFLAGS) UGeneration.cpp
 
 clean:
 	rm *.o LinearOpticalSimulation *.dat *.out

@@ -9,7 +9,7 @@
 
 //#define DELETE_CPU_ARRAYS
 #define ANCILLA_PHOTONS 6
-#define ANCILLA_MODES 8
+#define ANCILLA_MODES 6
 
 /** ============================================ */
 
@@ -24,9 +24,7 @@ __declspec(target(mic)) int dev_numThreadsCPU;
 
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM,int intParam){
 
-    if(ANCILLA_MODES == 8) CPUWorkload = 180000000;
-    else if(ANCILLA_MODES == 6) CPUWorkload = 1;
-    else assert( false );
+    CPUWorkload = 48700000;
 
     ancillaPhotons = ancillaP;
     ancillaModes = ancillaM;
@@ -232,8 +230,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
             complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
-            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),
-                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),UProdTemp);
+            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
             complex_special_op_minus(&stateAmplitude[6],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
@@ -303,8 +301,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
             complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
-            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),
-                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),UProdTemp);
+            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
             complex_special_op_minus(&stateAmplitude[6],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
@@ -367,8 +365,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
             complex_special_op_plus(&stateAmplitude[2],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
-            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),
-                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ancillaPhotons) + ancillaPhotons+1]),UProdTemp);
+            complex_special_op_minus(&stateAmplitude[4],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
+                               UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
 
             complex_special_op_minus(&stateAmplitude[6],UelPtr(dev_U,ANCILLA_MODES,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES+3,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),
                                UelPtr(dev_U,ANCILLA_MODES + 1,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS]),UelPtr(dev_U,ANCILLA_MODES + 2,dev_mPrime[y * (2+ANCILLA_PHOTONS) + ANCILLA_PHOTONS+1]),UProdTemp);
