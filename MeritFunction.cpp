@@ -101,7 +101,7 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
         outfile << "U:\n" << std::setprecision(6) << U << std::endl << std::endl;
 
-        outfile << "Zero matrix: " << UGenerator.zeroEntries << std::endl << std::endl;
+        outfile << "Zero matrix:\n" << UGenerator.zeroEntries << std::endl << std::endl;
 
         for(int i=0;i<position.size();i++) outfile << std::setprecision(16) << position(i) << ",";
 
@@ -170,7 +170,40 @@ Eigen::VectorXd MeritFunction::setInitialPosition(){
 
 void MeritFunction::shiftUToZeroSolution(Eigen::VectorXd& position){
 
-    // TO DO - WRITE THIS FUNCTION
+    Eigen::MatrixXcd H( U.rows(),U.cols() );
+
+    setAntiHermitian1( H, position );
+
+    V = H.exp();
+
+    setAntiHermitian2( H, position );
+
+    W = H.exp();
+
+    for(int i=0;i<D.size();i++) D(i) = std::exp( -position( i + 2 * U.rows() * U.rows() ) * position( i + 2 * U.rows() * U.rows()) );
+
+    U = V * D.asDiagonal() * W;
+
+    for(int j=0;j<U.cols();j++) for(int i=0;i<U.rows();i++){
+
+        if( UGenerator.zeroEntries(i,j) == 0 ) U(i,j) *= 0;
+
+    }
+
+
+    Eigen::JacobiSVD<Eigen::MatrixXcd> svd(U, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    if( svd.singularValues()(0) > 1 ) D = svd.singularValues() / svd.singularValues()(0);
+    else D = svd.singularValues();
+
+    V = svd.matrixU();
+
+    W = svd.matrixV().conjugate().transpose();
+
+    setPosition1( position );
+    setPosition2( position );
+
+    for(int i=0;i<D.size();i++) position( i + 2 * U.rows() * U.rows() ) = std::sqrt( -std::log( D(i) ) );
 
     return;
 
