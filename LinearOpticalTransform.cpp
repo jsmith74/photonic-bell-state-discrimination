@@ -9,7 +9,7 @@
 
 //#define DELETE_CPU_ARRAYS
 #define ANCILLA_PHOTONS 6
-#define ANCILLA_MODES 8
+#define ANCILLA_MODES 6
 
 /** ============================================ */
 
@@ -24,7 +24,7 @@ __declspec(target(mic)) int dev_numThreadsCPU;
 
 void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM,int intParam){
 
-    CPUWorkload = 180000000;
+    CPUWorkload = 48700000;
 
     ancillaPhotons = ancillaP;
     ancillaModes = ancillaM;

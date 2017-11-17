@@ -15,7 +15,7 @@
 void MeritFunction::setMeritFunction(int intParam){
 
     int ancillaPhotons = 6;
-    int ancillaModes = 8;
+    int ancillaModes = 6;
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes,intParam);
 
@@ -78,7 +78,7 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
         outfile << "U:\n" << std::setprecision(6) << U << std::endl << std::endl;
 
-        outfile << "Zero matrix: " << UGenerator.zeroEntries << std::endl << std::endl;
+        outfile << "Zero matrix:\n" << UGenerator.zeroEntries << std::endl << std::endl;
 
         for(int i=0;i<position.size();i++) outfile << std::setprecision(16) << position(i) << ",";
 
@@ -135,7 +135,7 @@ Eigen::VectorXd MeritFunction::setInitialPosition(){
 
 void MeritFunction::shiftUToZeroSolution(Eigen::VectorXd& position){
 
-    // TO DO - WRITE THIS FUNCTION
+    UGenerator.findZeroUnitary( position );
 
     return;
 
