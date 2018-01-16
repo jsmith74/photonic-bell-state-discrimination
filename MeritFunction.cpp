@@ -64,6 +64,10 @@ Eigen::MatrixXcd MeritFunction::printReport(Eigen::VectorXd& position){
 
     V = H.exp();
 
+    std::cout << V << std::endl << std::endl;
+
+    std::cout << "======================================" << std::endl << std::endl;
+
     return V;
 
 }

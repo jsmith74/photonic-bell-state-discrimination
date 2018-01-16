@@ -21,7 +21,7 @@ int main(){
 
     LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes);
 
-    while(true){
+    while(trialNumb <= 1237){
 
         Eigen::MatrixXcd U(4 + ancillaModes,4 + ancillaModes);
 
