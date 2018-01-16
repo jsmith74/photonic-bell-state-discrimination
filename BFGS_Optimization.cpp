@@ -25,14 +25,14 @@
 
 /** ===== Print Step Monitor ======================================= */
 
-#define PRINT_STEP_MONITOR
+//#define PRINT_STEP_MONITOR
 
 /** ================================================================ */
 
 
 /** ===== Seed Random Number Generator ============================= */
 
-#define SEED_RANDOM_NUMBER_GENERATOR
+//#define SEED_RANDOM_NUMBER_GENERATOR
 
 /** ================================================================ */
 
@@ -52,7 +52,7 @@
 
 /** ===== Turn on Optimization Warning Messages ==================== */
 
-#define OPT_WARNING_MESSAGE
+//#define OPT_WARNING_MESSAGE
 
 /** ================================================================ */
 
@@ -358,7 +358,7 @@ void BFGS_Optimization::printStepMonitor(){
     return;
 }
 
-double BFGS_Optimization::minimize(){
+Eigen::MatrixXcd BFGS_Optimization::minimize(){
 
     position = meritFunction.setInitialPosition();
 
@@ -430,13 +430,13 @@ double BFGS_Optimization::minimize(){
 
     }
 
-    printResultReport();
+    Eigen::MatrixXcd outputMatrix = meritFunction.printReport(position);
 
     if(isnan(stepMonitor)) std::cout << "FIDELITY BEFORE NAN CRASH: " << stepMonitorSafety;
 
     if(stepMonitor < bestResult) bestResult = stepMonitor;
 
-    return stepMonitor;
+    return outputMatrix;
 
 }
 
@@ -503,7 +503,7 @@ void BFGS_Optimization::printResultReport(){
 
 
 
-BFGS_Optimization::BFGS_Optimization(double tolerance,double maxStepSize,int intParam){
+BFGS_Optimization::BFGS_Optimization(double tolerance,double maxStepSize,Eigen::MatrixXi& intParam){
 
     #ifdef SEED_RANDOM_NUMBER_GENERATOR
 

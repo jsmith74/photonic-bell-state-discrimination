@@ -9,8 +9,8 @@ class BFGS_Optimization{
 
     public:
 
-        BFGS_Optimization(double tolerance,double maxStepSize,int intParam);
-        double minimize();
+        BFGS_Optimization(double tolerance,double maxStepSize,Eigen::MatrixXi& intParam);
+        Eigen::MatrixXcd minimize();
         double bestResult;
 
     private:

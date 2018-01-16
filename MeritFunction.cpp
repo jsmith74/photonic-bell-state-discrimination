@@ -10,31 +10,18 @@
 
 #define SVD_SCALING 1.0
 
-void MeritFunction::setMeritFunction(int intParam){
+#define CONDITIONED_U
 
-    int ancillaPhotons = 2;
-    int ancillaModes = 2;
+void MeritFunction::setMeritFunction(Eigen::MatrixXi& intParam){
 
-    /** ======================================================================
+    int ancillaPhotons = 6;
+    int ancillaModes = 6;
 
-            REMEMBER TO CHECK THE AMPLITUDE SCALING FOR AN APPROPRIATE STARTING RANGE FOR EACH
-            CONFIGURATION OF ANCILLA RESOURCES - MAKE SURE TO TURN OFF PARALELLIZATION IN main.cpp
-
-        ====================================================================== */
-
-    LOCircuit.initializeCircuit(ancillaPhotons,ancillaModes);
-
-    funcDimension = 2 * ( 4 + ancillaModes ) * ( 4 + ancillaModes ) + 4 + ancillaModes;
+    funcDimension = ( 4 + ancillaModes ) * ( 4 + ancillaModes );
 
     U.resize( 4 + ancillaModes,4 + ancillaModes );
-    V.resize( 4 + ancillaModes,4 + ancillaModes );
-    W.resize( 4 + ancillaModes,4 + ancillaModes );
 
-    #ifdef CHECK_AMPLITUDE_SCALING
-
-        checkSVDInitialConditionScaling();
-
-    #endif // CHECK_AMPLITUDE_SCALING
+    zeroEntries = intParam;
 
     return;
 
@@ -44,50 +31,40 @@ void MeritFunction::setMeritFunction(int intParam){
 
 double MeritFunction::f(Eigen::VectorXd& position){
 
-    Eigen::MatrixXcd H( U.rows(),U.cols() );
+    Eigen::MatrixXcd H( V.rows(),V.cols() );
 
     setAntiHermitian1( H, position );
 
     V = H.exp();
 
-    setAntiHermitian2( H, position );
+    double output = 0.0;
 
-    W = H.exp();
+    for(int j=0;j<zeroEntries.cols();j++) for(int i=0;i<zeroEntries.rows();i++){
 
-    for(int i=0;i<D.size();i++) D(i) = std::exp( -position( i + 2 * U.rows() * U.rows() )*position( i + 2 * U.rows() * U.rows()) );
+        if(zeroEntries(i,j) == 0) output += std::norm( V(i,j) );
 
-    U = V * D.asDiagonal() * W;
+    }
 
-    LOCircuit.setMutualEntropy(U);
+#ifdef CONDITIONED_U
 
-    return LOCircuit.mutualEntropy;
+    return output;
+
+#endif // CONDITIONED_U
+
+    return 2.0;
 
 }
 
 
-void MeritFunction::printReport(Eigen::VectorXd& position){
+Eigen::MatrixXcd MeritFunction::printReport(Eigen::VectorXd& position){
 
-    Eigen::MatrixXcd H( U.rows(),U.cols() );
+    Eigen::MatrixXcd H( V.rows(),V.cols() );
 
     setAntiHermitian1( H, position );
 
     V = H.exp();
 
-    setAntiHermitian2( H, position );
-
-    W = H.exp();
-
-    for(int i=0;i<D.size();i++) D(i) = std::exp( -position( i + 2 * U.rows() * U.rows() )*position( i + 2 * U.rows() * U.rows()) );
-
-    U = V * D.asDiagonal() * W;
-
-    LOCircuit.setMutualEntropy(U);
-
-    // ENTER PRINT FUNCTION HERE
-
-    LOCircuit.setMutualEntropy(U);
-
-    return;
+    return V;
 
 }
 
@@ -96,19 +73,14 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 Eigen::VectorXd MeritFunction::setInitialPosition(){
 
     V = Eigen::MatrixXcd::Identity(U.rows(),U.cols());
-    W = Eigen::MatrixXcd::Identity(U.rows(),U.cols());
 
     Eigen::VectorXd position(funcDimension);
-
-    int ampSize = U.rows() + ( U.rows() * U.rows() - U.rows() ) / 2;
 
     for(int j=0;j<INITIAL_CONDITION_RANDOM_DEGREE;j++){
 
         position = SVD_SCALING * Eigen::VectorXd::Random(funcDimension);
 
-        for(int i=0;i<ampSize;i++) position(i) *= AMPLITUDE_SCALING;
-
-        for(int i=0;i<ampSize;i++) position( i + U.rows() * U.rows() ) *= AMPLITUDE_SCALING;
+        for(int i=0;i<funcDimension;i++) position(i) *= AMPLITUDE_SCALING;
 
         Eigen::MatrixXcd H( U.rows(),U.cols() );
 
@@ -119,18 +91,9 @@ Eigen::VectorXd MeritFunction::setInitialPosition(){
 
         V = UTemp * V;
 
-        setAntiHermitian2( H, position );
-
-        UTemp = H.exp();
-
-        W = UTemp * W;
-
     }
 
-    D.resize(U.rows());
-
     setPosition1( position );
-    setPosition2( position );
 
     return position;
 

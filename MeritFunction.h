@@ -15,10 +15,10 @@ class MeritFunction{
     public:
 
         MeritFunction();
-        void setMeritFunction(int intParam);
+        void setMeritFunction(Eigen::MatrixXi& intParam);
         double f(Eigen::VectorXd& position);
         int funcDimension;
-        void printReport(Eigen::VectorXd& position);
+        Eigen::MatrixXcd printReport(Eigen::VectorXd& position);
         Eigen::VectorXd setInitialPosition();
 
     private:
@@ -32,6 +32,8 @@ class MeritFunction{
 
         void setPosition1( Eigen::VectorXd& position );
         void setPosition2( Eigen::VectorXd& position );
+
+        Eigen::MatrixXi zeroEntries;
 
 };
 
