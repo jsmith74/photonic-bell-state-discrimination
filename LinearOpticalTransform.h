@@ -14,10 +14,11 @@ class LinearOpticalTransform{
 
     public:
 
-        double mutualEntropy;
+        double mutualEntropy, successProbability, failureProbability, totalProbCheck;
         LinearOpticalTransform();
         void initializeCircuit(int& ancillaP,int& ancillaM);
         void setMutualEntropy(Eigen::MatrixXcd& U);
+        void setTotalSuccessProb(Eigen::MatrixXcd& U);
 
     private:
 

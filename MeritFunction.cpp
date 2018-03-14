@@ -12,8 +12,8 @@
 
 void MeritFunction::setMeritFunction(int intParam){
 
-    int ancillaPhotons = 2;
-    int ancillaModes = 2;
+    int ancillaPhotons = 4;
+    int ancillaModes = 4;
 
     /** ======================================================================
 
@@ -83,9 +83,13 @@ void MeritFunction::printReport(Eigen::VectorXd& position){
 
     LOCircuit.setMutualEntropy(U);
 
-    // ENTER PRINT FUNCTION HERE
+    std::cout << "Mutual Information: " << std::setprecision(16) << 2.0 - 0.25 * LOCircuit.mutualEntropy << std::endl;
+    std::cout << "Total Prob Check: " << LOCircuit.totalProbCheck << std::endl;
 
-    LOCircuit.setMutualEntropy(U);
+    LOCircuit.setTotalSuccessProb(U);
+
+    std::cout << "Success Probability: " << std::setprecision(16) << LOCircuit.successProbability << std::endl;
+    std::cout << "Failure Probability: " << std::setprecision(16) << LOCircuit.failureProbability << std::endl;
 
     return;
 

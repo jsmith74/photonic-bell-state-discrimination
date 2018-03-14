@@ -35,6 +35,64 @@ void LinearOpticalTransform::initializeCircuit(int& ancillaP,int& ancillaM){
 
 }
 
+void LinearOpticalTransform::setTotalSuccessProb(Eigen::MatrixXcd& U){
+
+    double pyx[4];
+
+    double parallelSuccessProbability = 0;
+    double parallelFailureProbability = 0;
+
+    /** ===== NOTE ==============================================
+
+            THE REDUCTION OVER totalPyxN IS UNNESSESSARY FOR THE
+            CASE OF UNITARY U - REMOVE THOSE TERMS FROM THE REDUCTION PRAGMA IN THOSE CASES
+            (THE REDUCTION IS EXPENSIVE)
+
+        ========================================================= */
+
+#pragma omp parallel reduction(+:parallelSuccessProbability,parallelFailureProbability)
+{
+
+    int threadID = omp_get_thread_num();
+
+    for( int y=parallelGrid[threadID]; y<parallelGrid[threadID+1]; y++ ){
+
+        std::complex<double> stateAmplitude[4];
+
+        stateAmplitude[0] = 0.0;
+        stateAmplitude[1] = 0.0;
+        stateAmplitude[2] = 0.0;
+        stateAmplitude[3] = 0.0;
+
+        do{
+
+            setStateAmplitude(stateAmplitude,U,y);
+
+        } while( std::next_permutation( mPrime[y].begin(), mPrime[y].end() ) );
+
+        normalizeStateAmplitude(stateAmplitude,y);
+
+        pyx[0] = std::norm( stateAmplitude[0] );
+        pyx[1] = std::norm( stateAmplitude[1] );
+        pyx[2] = std::norm( stateAmplitude[2] );
+        pyx[3] = std::norm( stateAmplitude[3] );
+
+        parallelSuccessProbability += *std::max_element(pyx,pyx+4);
+        parallelFailureProbability += pyx[0] + pyx[1] + pyx[2] + pyx[3];
+        parallelFailureProbability -= *std::max_element(pyx,pyx+4);
+
+
+    }
+
+}
+
+    successProbability = 0.25 * parallelSuccessProbability;
+    failureProbability = 0.25 * parallelFailureProbability;
+
+    return;
+
+}
+
 
 void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
 
@@ -109,6 +167,8 @@ void LinearOpticalTransform::setMutualEntropy(Eigen::MatrixXcd& U){
     if(totalPyx3 > 0 && logNum > 0) parallelMutualEntropy += totalPyx3 * log2( logNum / totalPyx3 );
 
     mutualEntropy = parallelMutualEntropy;
+
+    totalProbCheck = logNum;
 
     return;
 
